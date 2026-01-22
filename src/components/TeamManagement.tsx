@@ -1,7 +1,6 @@
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { User, UserPermissions, Team } from '../types';
-import { Users, Plus, ShieldCheck, Zap, UserX, Crown, Eye, CheckSquare, CreditCard, Pencil, Lock, Search, RotateCcw, X, Check, MoreHorizontal, AlertCircle, Calendar, Shield, Mail, Briefcase, ChevronRight, Settings, ArrowUp, ArrowDown, CheckCircle2, Trash2, User as UserIcon, ShieldAlert, LayoutGrid, Palette, Hash } from 'lucide-react';
+import { Users, Plus, ShieldCheck, Zap, UserX, Crown, Eye, CheckSquare, CreditCard, Pencil, Lock, Search, RotateCcw, X, Check, Mail, Settings, ArrowUp, ArrowDown, CheckCircle2, Trash2, User as UserIcon, ShieldAlert, LayoutGrid, Palette, Shield } from 'lucide-react';
 import CustomSelect from './CustomSelect';
 import { useUser } from '../contexts/UserContext';
 
@@ -23,18 +22,21 @@ interface TeamManagementProps {
   onClearFilters: () => void;
 }
 
-const PermissionBadge: React.FC<{ icon: any, label: string, colorClass?: string, showLabel?: boolean }> = ({ icon: Icon, label, colorClass = "indigo", showLabel = true }) => {
+// FIXED: Always square, uniform size (28px) for perfect alignment
+const PermissionBadge: React.FC<{ icon: any, label: string, colorClass?: string }> = ({ icon: Icon, label, colorClass = "indigo" }) => {
     const styles = {
-        indigo: "bg-indigo-50 text-indigo-700 border-indigo-100",
-        emerald: "bg-emerald-50 text-emerald-700 border-emerald-100",
-        amber: "bg-amber-50 text-amber-700 border-amber-100",
-        slate: "bg-slate-50 text-slate-600 border-slate-100",
+        indigo: "bg-indigo-50 text-indigo-600 border-indigo-200 hover:bg-indigo-100",
+        emerald: "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100",
+        amber: "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100",
+        slate: "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100",
     }[colorClass as "indigo" | "emerald" | "amber" | "slate"];
 
     return (
-        <div className={`flex items-center gap-1.5 rounded-md border text-[9px] font-bold uppercase tracking-tight whitespace-nowrap shadow-sm transition-all ${styles} ${showLabel ? 'px-2 py-0.5' : 'p-1'}`} title={!showLabel ? label : ''}>
-            <Icon size={showLabel ? 10 : 12} />
-            {showLabel && label}
+        <div 
+            className={`flex items-center justify-center rounded-lg border shadow-sm transition-all cursor-help w-7 h-7 shrink-0 ${styles}`} 
+            title={label}
+        >
+            <Icon size={14} strokeWidth={2.5} />
         </div>
     );
 };
@@ -48,22 +50,26 @@ const PermissionToggle = ({ active, label, subLabel, icon: Icon, onClick, colorC
         type="button" 
         onClick={disabled ? undefined : onClick} 
         disabled={disabled}
-        className={`flex items-center justify-between p-4 rounded-xl border transition-all text-left group relative ${fullWidth ? 'col-span-2' : ''} ${active ? activeStyles : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        // FIXED: Added w-full to ensure consistent width in the side panel list
+        className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left group relative ${fullWidth ? 'col-span-2' : ''} ${active ? activeStyles : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
           {isInherited && (
             <div className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md border border-indigo-100 text-indigo-500 z-10" title="Permission inherited from Master Role">
                 <Shield size={10} />
             </div>
           )}
-          <div className="flex items-center gap-3">
-            <Icon size={18} className={`shrink-0 ${isInherited ? 'animate-pulse' : ''}`} />
-            <div className="flex flex-col">
-              <span className="text-xs font-bold">{label}</span>
-              {subLabel && <span className="text-[9px] opacity-70 font-medium leading-tight">{subLabel}</span>}
+          <div className="flex items-center gap-3 min-w-0 pr-4">
+            <div className="shrink-0">
+                <Icon size={18} className={isInherited ? 'animate-pulse' : ''} />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-bold truncate">{label}</span>
+              {subLabel && <span className="text-[9px] opacity-70 font-medium leading-tight truncate">{subLabel}</span>}
             </div>
           </div>
-          <div className={`w-10 h-5 rounded-full relative transition-colors shrink-0 ${active ? activeSwitchStyles : 'bg-slate-200'}`}>
-            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${active ? 'translate-x-6' : 'translate-x-1'}`} />
+          {/* Fixed size toggle switch w-8 h-4 matching RectoEditor style */}
+          <div className={`w-8 h-4 rounded-full relative transition-colors shrink-0 ${active ? activeSwitchStyles : 'bg-slate-200'}`}>
+            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-transform shadow-sm ${active ? 'translate-x-4' : 'translate-x-0.5'}`} />
           </div>
       </button>
     );
@@ -117,10 +123,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
   const [newUser, setNewUser] = useState({ firstName: '', lastName: '', email: '', jobTitle: '', team: '' });
   const [newTeam, setNewTeam] = useState<Partial<Team>>({ name: '', description: '', color: 'indigo' });
   const [inviteStatus, setInviteStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
-  
-  // NEW: State for the unified confirmation modal
   const [confirmConfig, setConfirmConfig] = useState<ConfirmationModalConfig | null>(null);
-  
   const filterRef = useRef<HTMLDivElement>(null);
 
   const defaultPerms: UserPermissions = {
@@ -143,7 +146,6 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isFilterOpen, setIsFilterOpen]);
 
-  // Derive Options from Explicit Teams
   const teamOptions = teams.map(t => ({ label: t.name, value: t.name }));
   const userOptions = initialUsers.filter(u => u.status === 'ACTIVE').map(u => ({ label: `${u.firstName} ${u.lastName}`, value: u.id, subLabel: u.jobTitle }));
   
@@ -200,10 +202,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
       e.preventDefault();
       if (!canManage) return;
       if (newTeam.id) {
-          // Edit Mode
           onUpdateTeam(newTeam as Team, teams.find(t => t.id === newTeam.id)?.name);
       } else {
-          // Create Mode
           addTeam({ ...newTeam, id: `t-${Date.now()}` } as Team);
       }
       setIsTeamModalOpen(false);
@@ -213,14 +213,11 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
   const handleDeleteTeam = (id: string) => {
       const team = teams.find(t => t.id === id);
       if (!team) return;
-      
       const memberCount = initialUsers.filter(u => u.team === team.name).length;
-      
       if (memberCount > 0) {
           alert(`Cannot delete team "${team.name}" because it has ${memberCount} members. Please reassign them first.`);
           return;
       }
-      
       setConfirmConfig({
           isOpen: true,
           title: "Delete Team?",
@@ -264,15 +261,11 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
         return;
     }
     const updatedUser = { ...original, ...inlineForm } as User;
-    
-    // Check for status change to INACTIVE
     if (original.status === 'ACTIVE' && updatedUser.status === 'INACTIVE') {
         if (original.id === currentUser.id) {
             alert("Safety Lock: You cannot deactivate your own account.");
             return;
         }
-        
-        // Open Custom Confirmation Modal instead of window.confirm
         setConfirmConfig({
             isOpen: true,
             title: "Deactivate User?",
@@ -288,8 +281,6 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
         });
         return;
     }
-    
-    // Normal update (non-destructive)
     performUserUpdate(inlineEditingId, updatedUser);
     setInlineEditingId(null);
     setInlineForm({});
@@ -299,7 +290,6 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
     if (!canManage) return;
     const user = initialUsers.find(u => u.id === userId);
     if (!user) return;
-    
     if (user.permissions.canManageTeam && !currentUser.permissions.canManageTeam) {
         alert("Cannot deactivate an Administrator.");
         return;
@@ -308,11 +298,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
         alert("Safety Lock: You cannot deactivate your own account.");
         return;
     }
-
     const nextStatus = user.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    
     if (nextStatus === 'INACTIVE') {
-        // Destructive Action: Show Modal
         setConfirmConfig({
             isOpen: true,
             title: `Deactivate ${user.firstName}?`,
@@ -325,7 +312,6 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
             }
         });
     } else {
-        // Constructive Action: Immediate or subtle confirmation
         performUserUpdate(userId, { ...user, status: nextStatus });
     }
   };
@@ -340,7 +326,6 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
           alert("Safety Lock: You cannot remove your own account.");
           return;
       }
-
       setConfirmConfig({
           isOpen: true,
           title: "Remove User Permanently?",
@@ -355,7 +340,6 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
       });
   };
 
-  // PBAC REFACTOR: Role presets instead of AccessLevels
   const applyRolePreset = (preset: 'ADMIN' | 'STANDARD' | 'GUEST') => {
     if (!panelUser || !canManage) return;
     if (panelUser.permissions.canManageTeam && !currentUser.permissions.canManageTeam) {
@@ -368,7 +352,6 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
     }
 
     let newPerms: UserPermissions;
-
     if (preset === 'ADMIN') {
         newPerms = { 
           canDesign: true, 
@@ -379,15 +362,13 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
           canAccessBilling: true 
         };
     } else if (preset === 'GUEST') {
-        newPerms = { ...defaultPerms }; // All false
+        newPerms = { ...defaultPerms }; 
     } else {
-        // Standard User Default
         newPerms = { 
           ...defaultPerms,
-          canExecute: true // Basic standard capability
+          canExecute: true 
         };
     }
-    
     performUserUpdate(panelUser.id, { ...panelUser, permissions: newPerms });
   };
 
@@ -397,19 +378,15 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
          alert("Access Denied: Restricted to Administrators.");
          return;
     }
-    
     if (panelUser.id === currentUser.id && key === 'canManageTeam' && panelUser.permissions.canManageTeam) {
         alert("Safety Lock: You cannot remove your own Team Management rights.");
         return;
     }
-
     let newPerms = { ...panelUser.permissions };
     newPerms[key] = !newPerms[key];
-    
     performUserUpdate(panelUser.id, { ...panelUser, permissions: newPerms });
   };
 
-  // Derived helpers for UI state
   const isPanelAdmin = panelUser?.permissions.canManageTeam && panelUser?.permissions.canAccessBilling;
   const isPanelGuest = panelUser && !Object.values(panelUser.permissions).some(Boolean);
 
@@ -424,7 +401,6 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
                 <p className="text-slate-500 mt-1 text-sm truncate">Manage permissions and responsibility matrix.</p>
             </div>
             
-            {/* VIEW SWITCHER */}
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-40">
                 <div className="bg-slate-100 p-1 rounded-xl flex items-center">
                     <button 
@@ -467,7 +443,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
                         <div className="col-span-2 text-center">Status</div>
                         <div className="col-span-2 cursor-pointer hover:text-indigo-600 flex items-center gap-1" onClick={() => onSort('team')}>Team {sortConfig.key === 'team' && (sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}</div>
                         <div className="col-span-2">Job Title</div>
-                        <div className="col-span-2">Capabilities</div>
+                        <div className="col-span-2">Permissions</div>
                         <div className="col-span-1 text-right">Action</div>
                     </div>
                     
@@ -475,11 +451,11 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
                         {filteredUsers.length === 0 ? <div className="p-12 text-center text-slate-400 italic">No members found.</div> : filteredUsers.map(user => {
                             const p = user.permissions;
                             const activePerms: Array<{ icon: any, label: string, color: string }> = [];
-                            if (p.canDesign) activePerms.push({ icon: Pencil, label: "Design", color: "indigo" });
+                            if (p.canDesign) activePerms.push({ icon: Pencil, label: "Designer", color: "indigo" });
                             if (p.canVerifyDesign) activePerms.push({ icon: ShieldCheck, label: "Publisher", color: "emerald" });
                             if (p.canExecute) activePerms.push({ icon: Zap, label: "Executor", color: "slate" });
                             if (p.canVerifyRun) activePerms.push({ icon: CheckSquare, label: "Validator", color: "emerald" });
-                            if (p.canManageTeam) activePerms.push({ icon: Users, label: "Team Lead", color: "indigo" });
+                            if (p.canManageTeam) activePerms.push({ icon: Users, label: "Team Mgr", color: "indigo" });
                             if (p.canAccessBilling) activePerms.push({ icon: CreditCard, label: "Billing", color: "amber" });
 
                             const isMonoPerm = activePerms.length === 1;
@@ -525,7 +501,12 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
                                 </div>
                                 <div className="col-span-2 flex flex-wrap justify-start gap-1.5">
                                     {isAdmin ? <PermissionBadge icon={Crown} label="Admin" colorClass="amber" /> : isGuest ? <PermissionBadge icon={Eye} label="Viewer" colorClass="slate" /> : (
-                                        <>{activePerms.slice(0, 2).map((perm, idx) => <PermissionBadge key={idx} icon={perm.icon} label={perm.label} colorClass={perm.color} showLabel={isMonoPerm} />)}{activePerms.length > 2 && <div className="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-[9px] font-bold border border-slate-200">+{activePerms.length - 2}</div>}{activePerms.length === 0 && <div className="text-[9px] font-black uppercase text-slate-300 tracking-widest flex items-center gap-1"><Lock size={12} /> Read-only</div>}</>
+                                        <>
+                                          {activePerms.map((perm, idx) => (
+                                            <PermissionBadge key={idx} icon={perm.icon} label={perm.label} colorClass={perm.color} />
+                                          ))}
+                                          {activePerms.length === 0 && <div className="text-[9px] font-black uppercase text-slate-300 tracking-widest flex items-center gap-1"><Lock size={12} /> Read-only</div>}
+                                        </>
                                     )}
                                 </div>
                                 <div className="col-span-1 text-right flex justify-end gap-1 relative">
@@ -626,6 +607,129 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* USER SETTINGS PANEL - SLIDE OVER */}
+      {panelUser && (
+        <>
+            <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm z-[40] animate-in fade-in" onClick={() => setActivePanelUserId(null)} />
+            <div className="absolute top-0 right-0 h-full w-[400px] bg-white border-l border-slate-200 shadow-2xl z-[50] flex flex-col animate-in slide-in-from-right duration-300">
+                <div className="flex items-center justify-between p-6 border-b border-slate-100">
+                    <h2 className="font-bold text-lg text-slate-900">User Permissions</h2>
+                    <button onClick={() => setActivePanelUserId(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"><X size={20}/></button>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
+                    {/* Identity Card */}
+                    <div className="flex items-center gap-4 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold ${getUserColor(panelUser.team)}`}>{panelUser.firstName[0]}{panelUser.lastName[0]}</div>
+                        <div>
+                            <div className="font-bold text-slate-900">{panelUser.firstName} {panelUser.lastName}</div>
+                            <div className="text-xs text-slate-500">{panelUser.jobTitle} &middot; {panelUser.team}</div>
+                        </div>
+                    </div>
+
+                    {/* Quick Roles */}
+                    <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Quick Role Presets</label>
+                        <div className="grid grid-cols-3 gap-3">
+                            <RoleCard selected={isPanelAdmin} title="Admin" icon={Crown} colorClass="amber" onClick={() => applyRolePreset('ADMIN')} />
+                            <RoleCard selected={!isPanelAdmin && !isPanelGuest} title="Standard" icon={Users} colorClass="indigo" onClick={() => applyRolePreset('STANDARD')} />
+                            <RoleCard selected={isPanelGuest} title="Guest" icon={Eye} colorClass="slate" onClick={() => applyRolePreset('GUEST')} />
+                        </div>
+                    </div>
+
+                    {/* Fine Grained Controls */}
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Fine-Grained Access</label>
+                        
+                        <PermissionToggle 
+                            active={panelUser.permissions.canDesign} 
+                            onClick={() => togglePanelPermission('canDesign')} 
+                            label="Process Designer" 
+                            subLabel="Can create and edit process templates"
+                            icon={Pencil}
+                            colorClass="indigo"
+                            disabled={isPanelAdmin}
+                        />
+                        <PermissionToggle 
+                            active={panelUser.permissions.canVerifyDesign} 
+                            onClick={() => togglePanelPermission('canVerifyDesign')} 
+                            label="Process Publisher" 
+                            subLabel="Can approve and publish drafts"
+                            icon={ShieldCheck}
+                            colorClass="emerald"
+                            disabled={isPanelAdmin}
+                        />
+                         <PermissionToggle 
+                            active={panelUser.permissions.canExecute} 
+                            onClick={() => togglePanelPermission('canExecute')} 
+                            label="Run Executor" 
+                            subLabel="Can launch and execute runs"
+                            icon={Zap}
+                            colorClass="slate"
+                            disabled={isPanelAdmin}
+                        />
+                         <PermissionToggle 
+                            active={panelUser.permissions.canVerifyRun} 
+                            onClick={() => togglePanelPermission('canVerifyRun')} 
+                            label="Run Validator" 
+                            subLabel="Can sign-off and approve completed runs"
+                            icon={CheckSquare}
+                            colorClass="emerald"
+                            disabled={isPanelAdmin}
+                        />
+                         <PermissionToggle 
+                            active={panelUser.permissions.canManageTeam} 
+                            onClick={() => togglePanelPermission('canManageTeam')} 
+                            label="Team Manager" 
+                            subLabel="Can invite users and manage teams"
+                            icon={Users}
+                            colorClass="indigo"
+                        />
+                        <PermissionToggle 
+                            active={panelUser.permissions.canAccessBilling} 
+                            onClick={() => togglePanelPermission('canAccessBilling')} 
+                            label="Billing Admin" 
+                            subLabel="Can access invoices and subscription"
+                            icon={CreditCard}
+                            colorClass="amber"
+                        />
+                    </div>
+
+                    {/* Danger Zone */}
+                    <div className="pt-6 border-t border-slate-100 space-y-3">
+                         <button onClick={() => toggleDeactivation(panelUser.id)} className="w-full py-3 px-4 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 flex items-center justify-between group">
+                            <span>{panelUser.status === 'ACTIVE' ? 'Deactivate Account' : 'Reactivate Account'}</span>
+                            <UserX size={16} className="text-slate-400 group-hover:text-slate-600"/>
+                         </button>
+                         <button onClick={handleRemoveUser} className="w-full py-3 px-4 bg-red-50 border border-red-100 rounded-xl text-xs font-bold text-red-600 hover:bg-red-100 flex items-center justify-between">
+                            <span>Permanently Delete User</span>
+                            <Trash2 size={16} />
+                         </button>
+                    </div>
+                </div>
+            </div>
+        </>
+      )}
+
+      {/* CONFIRMATION MODAL */}
+      {confirmConfig && confirmConfig.isOpen && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 border border-white/20">
+                <div className={`p-8 text-center ${confirmConfig.variant === 'danger' ? 'bg-red-50/50' : 'bg-amber-50/50'}`}>
+                    <div className={`w-16 h-16 mx-auto rounded-3xl flex items-center justify-center mb-4 ${confirmConfig.variant === 'danger' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
+                        <ShieldAlert size={32} />
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-900 mb-2">{confirmConfig.title}</h3>
+                    <p className="text-sm text-slate-500 leading-relaxed">{confirmConfig.message}</p>
+                </div>
+                <div className="p-8 flex gap-3">
+                    <button onClick={() => setConfirmConfig(null)} className="flex-1 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-bold text-xs uppercase tracking-widest transition-colors">Cancel</button>
+                    <button onClick={confirmConfig.onConfirm} className={`flex-1 py-3 text-white rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg transition-all ${confirmConfig.variant === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}`}>{confirmConfig.confirmLabel}</button>
+                </div>
+             </div>
         </div>
       )}
     </div>
