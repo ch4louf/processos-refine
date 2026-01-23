@@ -64,24 +64,17 @@ const PermissionToggle = ({ active, label, subLabel, icon: Icon, onClick, colorC
         type="button" 
         onClick={disabled ? undefined : onClick} 
         disabled={disabled}
-        // FIXED: Added w-full to ensure consistent width in the side panel list
-        className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left group relative ${fullWidth ? 'col-span-2' : ''} ${active ? activeStyles : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left group ${fullWidth ? 'col-span-2' : ''} ${active ? activeStyles : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
-          {isInherited && (
-            <div className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md border border-indigo-100 text-indigo-500 z-10" title="Permission inherited from Master Role">
-                <Shield size={10} />
-            </div>
-          )}
           <div className="flex items-center gap-3 min-w-0 pr-4">
             <div className="shrink-0">
-                <Icon size={18} className={isInherited ? 'animate-pulse' : ''} />
+                <Icon size={18} />
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-xs font-bold truncate">{label}</span>
               {subLabel && <span className="text-[9px] opacity-70 font-medium leading-tight truncate">{subLabel}</span>}
             </div>
           </div>
-          {/* Fixed size toggle switch w-8 h-4 matching RectoEditor style */}
           <div className={`w-8 h-4 rounded-full relative transition-colors shrink-0 ${active ? activeSwitchStyles : 'bg-slate-200'}`}>
             <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-transform shadow-sm ${active ? 'translate-x-4' : 'translate-x-0.5'}`} />
           </div>
@@ -195,7 +188,18 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
       { label: 'All Time', value: 'all' }
   ];
 
-  let filteredUsers = initialUsers.filter(u => (!searchTerm || `${u.firstName} ${u.lastName} ${u.team} ${u.email} ${u.jobTitle}`.toLowerCase().includes(searchTerm.toLowerCase())));
+  // Filter: hide INACTIVE users by default unless explicitly showing them via filterStatus
+  let filteredUsers = initialUsers.filter(u => {
+    // Search filter
+    if (searchTerm && !`${u.firstName} ${u.lastName} ${u.team} ${u.email} ${u.jobTitle}`.toLowerCase().includes(searchTerm.toLowerCase())) {
+      return false;
+    }
+    // Status filter: hide INACTIVE by default, show only if filterStatus === 'INACTIVE' or 'ALL'
+    if (filterStatus === 'INACTIVE') return u.status === 'INACTIVE';
+    if (filterStatus === 'ALL') return true;
+    // Default: show only ACTIVE users
+    return u.status === 'ACTIVE';
+  });
   
   filteredUsers.sort((a, b) => {
     let vA = '', vB = '';
@@ -209,7 +213,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
     return vA > vB ? (sortConfig.direction === 'asc' ? 1 : -1) : 0;
   });
 
-  const activeFilterCount = (searchTerm ? 1 : 0);
+  const inactiveCount = initialUsers.filter(u => u.status === 'INACTIVE').length;
+  const activeFilterCount = (searchTerm ? 1 : 0) + (filterStatus ? 1 : 0);
 
   // --- HANDLERS ---
 
@@ -546,10 +551,27 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
 
             <div className="flex-1 flex justify-end items-center gap-2 pl-4">
                 {activeTab === 'MEMBERS' && (
-                    <div className="relative w-48 mr-2">
-                        <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
-                        <input className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-xs w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm" placeholder="Find member..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                    </div>
+                    <>
+                        <div className="relative w-48 mr-2">
+                            <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
+                            <input className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-xs w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm" placeholder="Find member..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                        </div>
+                        {inactiveCount > 0 && (
+                            <button 
+                                onClick={() => setFilterStatus(filterStatus === 'ALL' ? null : 'ALL')}
+                                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all border ${
+                                    filterStatus === 'ALL' 
+                                        ? 'bg-slate-100 border-slate-300 text-slate-700' 
+                                        : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600'
+                                }`}
+                                title={filterStatus === 'ALL' ? 'Hide inactive users' : `Show ${inactiveCount} inactive user${inactiveCount > 1 ? 's' : ''}`}
+                            >
+                                <UserX size={14} />
+                                <span className="hidden lg:inline">{filterStatus === 'ALL' ? 'Hide Inactive' : `+${inactiveCount} Inactive`}</span>
+                                <span className="lg:hidden">{inactiveCount}</span>
+                            </button>
+                        )}
+                    </>
                 )}
                 
                 {canManage && (
@@ -561,7 +583,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
                     </>
                 )}
 
-                {activeFilterCount > 0 && <button onClick={onClearFilters} className="flex items-center gap-2 px-3 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg text-xs font-bold transition-colors"><RotateCcw size={14} /> Reset</button>}
+                {activeFilterCount > 0 && <button onClick={() => { onClearFilters(); setFilterStatus(null); }} className="flex items-center gap-2 px-3 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg text-xs font-bold transition-colors"><RotateCcw size={14} /> Reset</button>}
                 
                 {canManage && (
                     <button onClick={() => activeTab === 'MEMBERS' ? setIsInviteModalOpen(true) : (setNewTeam({ name: '', description: '', color: 'indigo' }), setIsTeamModalOpen(true))} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 font-medium transition-colors shrink-0 animate-in fade-in">
@@ -924,15 +946,18 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
                         />
                     </div>
 
-                    {/* Danger Zone */}
-                    <div className="pt-6 border-t border-slate-100 space-y-3">
-                         <button onClick={() => toggleDeactivation(panelUser.id)} className="w-full py-3 px-4 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 flex items-center justify-between group">
+                    {/* Account Actions */}
+                    <div className="pt-6 border-t border-slate-100">
+                         <button 
+                           onClick={() => toggleDeactivation(panelUser.id)} 
+                           className={`w-full py-3 px-4 rounded-xl text-xs font-bold flex items-center justify-between group transition-all ${
+                             panelUser.status === 'ACTIVE' 
+                               ? 'border border-slate-200 text-slate-600 hover:bg-slate-50' 
+                               : 'bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                           }`}
+                         >
                             <span>{panelUser.status === 'ACTIVE' ? 'Deactivate Account' : 'Reactivate Account'}</span>
-                            <UserX size={16} className="text-slate-400 group-hover:text-slate-600"/>
-                         </button>
-                         <button onClick={handleRemoveUser} className="w-full py-3 px-4 bg-red-50 border border-red-100 rounded-xl text-xs font-bold text-red-600 hover:bg-red-100 flex items-center justify-between">
-                            <span>Permanently Delete User</span>
-                            <Trash2 size={16} />
+                            <UserX size={16} className={panelUser.status === 'ACTIVE' ? 'text-slate-400 group-hover:text-slate-600' : 'text-emerald-600'}/>
                          </button>
                     </div>
                 </div>
