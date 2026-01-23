@@ -3,11 +3,10 @@ import { ProcessDefinition, StepType, User, ProcessRun, WorkspaceSettings, UserP
 
 // --- UTILS ---
 const now = new Date();
-const getDate = (daysOffset: number) => {
+const getDate = (daysOffset: number, hour: number = 9, minute: number = 0) => {
   const d = new Date(now);
   d.setDate(d.getDate() - daysOffset);
-  // Add some random hour jitter for realism
-  d.setHours(9 + Math.floor(Math.random() * 8), Math.floor(Math.random() * 59));
+  d.setHours(hour, minute, 0, 0);
   return d.toISOString();
 };
 
@@ -23,8 +22,8 @@ const generateId = (prefix: string) => `${prefix}-${Math.random().toString(36).s
 const adminPerms: UserPermissions = { canDesign: true, canVerifyDesign: true, canExecute: true, canVerifyRun: true, canManageTeam: true, canAccessBilling: true };
 const managerPerms: UserPermissions = { canDesign: true, canVerifyDesign: true, canExecute: true, canVerifyRun: true, canManageTeam: false, canAccessBilling: false };
 const opsPerms: UserPermissions = { canDesign: false, canVerifyDesign: false, canExecute: true, canVerifyRun: false, canManageTeam: false, canAccessBilling: false };
-const auditorPerms: UserPermissions = { canDesign: false, canVerifyDesign: false, canExecute: false, canVerifyRun: true, canManageTeam: false, canAccessBilling: false };
-const guestPerms: UserPermissions = { canDesign: false, canVerifyDesign: false, canExecute: false, canVerifyRun: false, canManageTeam: false, canAccessBilling: false };
+const compliancePerms: UserPermissions = { canDesign: false, canVerifyDesign: false, canExecute: false, canVerifyRun: true, canManageTeam: false, canAccessBilling: false };
+const readOnlyPerms: UserPermissions = { canDesign: false, canVerifyDesign: false, canExecute: false, canVerifyRun: false, canManageTeam: false, canAccessBilling: false };
 
 // --- 1. NEXUS CORP DIRECTORY (25 Users) ---
 export const MOCK_USERS: User[] = [
@@ -47,7 +46,7 @@ export const MOCK_USERS: User[] = [
 
   // LEGAL & COMPLIANCE (The Blockers)
   { id: 'u-12', firstName: 'Eva', lastName: 'Rossi', email: 'eva@nexus.corp', jobTitle: 'General Counsel', team: 'Legal', status: 'ACTIVE', permissions: managerPerms },
-  { id: 'u-13', firstName: 'Rosa', lastName: 'Parks', email: 'rosa@nexus.corp', jobTitle: 'Compliance Officer', team: 'Legal', status: 'ACTIVE', permissions: auditorPerms },
+  { id: 'u-13', firstName: 'Rosa', lastName: 'Parks', email: 'rosa@nexus.corp', jobTitle: 'Compliance Officer', team: 'Legal', status: 'ACTIVE', permissions: compliancePerms },
   
   // OPERATIONS (The Doers)
   { id: 'u-14', firstName: 'Frank', lastName: 'Wright', email: 'frank@nexus.corp', jobTitle: 'COO', team: 'Operations', status: 'ACTIVE', permissions: adminPerms },
@@ -60,8 +59,8 @@ export const MOCK_USERS: User[] = [
   { id: 'u-19', firstName: 'Isabel', lastName: 'Allende', email: 'isabel@nexus.corp', jobTitle: 'CMO', team: 'Marketing', status: 'ACTIVE', permissions: opsPerms },
   { id: 'u-20', firstName: 'Yara', lastName: 'Shahidi', email: 'yara@nexus.corp', jobTitle: 'Brand Mgr', team: 'Marketing', status: 'ACTIVE', permissions: opsPerms },
 
-  // EXTERNAL / GUESTS
-  { id: 'u-guest', firstName: 'Guest', lastName: 'Auditor', email: 'audit@kpmg.fake', jobTitle: 'External Auditor', team: 'External', status: 'ACTIVE', permissions: guestPerms }
+  // EXTERNAL / AUDITORS
+  { id: 'u-guest', firstName: 'External', lastName: 'Auditor', email: 'audit@kpmg.fake', jobTitle: 'External Auditor', team: 'External', status: 'ACTIVE', permissions: readOnlyPerms }
 ];
 
 export const MOCK_TEAMS: Team[] = [
@@ -297,18 +296,32 @@ const runs: ProcessRun[] = [];
 
 // HISTORY: 6 Months of Financial Closes
 ['Oct 2024', 'Nov 2024', 'Dec 2024', 'Jan 2025', 'Feb 2025'].forEach((month, idx) => {
+  const startDay = 150 - (idx * 30);
+  const finishDay = 145 - (idx * 30);
+  
   runs.push({
     id: `run-fin-${idx}`, rootProcessId: p_finance_root, versionId: idx < 2 ? 'p-fin-v1' : 'p-fin-v2',
     processTitle: 'Global Month-End Close', runName: `Close - ${month}`,
-    startedBy: 'Bob Martin', startedAt: getDate(150 - (idx * 30)),
-    completedAt: getDate(145 - (idx * 30)), validatedAt: getDate(144 - (idx * 30)), validatorUserId: 'u-1',
+    startedBy: 'Bob Martin', startedAt: getDate(startDay, 9, 30),
+    completedAt: getDate(finishDay, 16, 45), validatedAt: getDate(finishDay, 17, 15), validatorUserId: 'u-1',
     status: 'APPROVED',
     stepValues: { 
         's-f-2': 'Variance: $0.45', 
         's-f-3': idx === 2 ? 'Adjusted +$45k (Year End)' : 'None' 
     },
     completedStepIds: ['s-f-1', 's-f-2', 's-f-3', 's-f-4', 's-f-5', 's-f-6'].slice(0, idx < 2 ? 4 : 6), 
-    stepFeedback: {}, activityLog: [],
+    stepFeedback: {}, 
+    // MANUALLY CRAFTED FINANCE LOGS
+    activityLog: [
+        { id: `l-fin-${idx}-1`, userId: 'u-2', userName: 'Bob Martin', action: 'Run initiated', timestamp: getDate(startDay, 9, 30) },
+        { id: `l-fin-${idx}-2`, userId: 'u-2', userName: 'Bob Martin', action: 'Uploaded Bank Reconciliations', timestamp: getDate(startDay, 11, 15) },
+        { id: `l-fin-${idx}-3`, userId: 'u-2', userName: 'Bob Martin', action: 'Confirmed Intercompany Eliminations', timestamp: getDate(startDay + 1, 14, 20) },
+        { id: `l-fin-${idx}-4`, userId: 'u-1', userName: 'Alice Dubois', action: 'Input Final EBITDA Adjustment', timestamp: getDate(startDay + 2, 10, 0) },
+        { id: `l-fin-${idx}-5`, userId: 'u-1', userName: 'Alice Dubois', action: 'Locked General Ledger (GL)', timestamp: getDate(startDay + 3, 16, 30) },
+        { id: `l-fin-${idx}-6`, userId: 'u-4', userName: 'Sarah Jenkins', action: 'Uploaded Signed Trial Balance', timestamp: getDate(finishDay, 9, 15) },
+        { id: `l-fin-${idx}-7`, userId: 'u-4', userName: 'Sarah Jenkins', action: 'Final Sign-off on Consolidated Report', timestamp: getDate(finishDay, 16, 0) },
+        { id: `l-fin-${idx}-8`, userId: 'u-1', userName: 'Alice Dubois', action: 'Validated & Approved', timestamp: getDate(finishDay, 17, 15) }
+    ],
     healthScore: 100
   });
 });
@@ -317,7 +330,7 @@ const runs: ProcessRun[] = [];
 runs.push({
   id: 'run-comp-fail', rootProcessId: p_comp_root, versionId: 'p-comp-v1',
   processTitle: 'Vendor Security Assessment (VSA)', runName: 'Vendor: Sketchy AI Startup',
-  startedBy: 'Victor Hugo', startedAt: getDate(20),
+  startedBy: 'Victor Hugo', startedAt: getDate(20, 10, 0),
   status: 'REJECTED',
   stepValues: { 
       's-c-1': 'SketchyAI, Cayman Islands',
@@ -325,9 +338,15 @@ runs.push({
   },
   completedStepIds: ['s-c-1'],
   stepFeedback: {
-    's-c-2': [{ id: 'fb-1', stepId: 's-c-2', userId: 'u-10', userName: 'Noah Sols', text: 'SOC2 Report is expired (2022) and covers wrong entity.', type: 'BLOCKER', createdAt: getDate(19), resolved: false }]
+    's-c-2': [{ id: 'fb-1', stepId: 's-c-2', userId: 'u-10', userName: 'Noah Sols', text: 'SOC2 Report is expired (2022) and covers wrong entity.', type: 'BLOCKER', createdAt: getDate(19, 14, 30), resolved: false }]
   },
-  activityLog: [{ id: 'l-1', userId: 'u-12', userName: 'Eva Rossi', action: 'Rejected Run', timestamp: getDate(18) }],
+  activityLog: [
+      { id: 'l-comp-1', userId: 'u-18', userName: 'Victor Hugo', action: 'Run initiated', timestamp: getDate(20, 10, 0) },
+      { id: 'l-comp-2', userId: 'u-18', userName: 'Victor Hugo', action: 'Completed Vendor Basic Info', timestamp: getDate(20, 10, 15) },
+      { id: 'l-comp-3', userId: 'u-18', userName: 'Victor Hugo', action: 'Uploaded SOC2 Report', timestamp: getDate(19, 11, 0) },
+      { id: 'l-comp-4', userId: 'u-10', userName: 'Noah Sols', action: 'Added BLOCKER feedback: SOC2 Expired', timestamp: getDate(19, 14, 30) },
+      { id: 'l-comp-5', userId: 'u-12', userName: 'Eva Rossi', action: 'Rejected Run: Compliance failure', timestamp: getDate(18, 9, 45) }
+  ],
   healthScore: 0
 });
 
@@ -335,11 +354,16 @@ runs.push({
 runs.push({
   id: 'run-it-cancel', rootProcessId: p_it_root, versionId: 'p-it-v5',
   processTitle: 'P1 Incident Response', runName: 'Incident #9921 - False Alarm',
-  startedBy: 'Grace Hopper', startedAt: getDate(40),
+  startedBy: 'Grace Hopper', startedAt: getDate(40, 3, 15),
   status: 'CANCELLED',
   stepValues: { 's-i-1': 'Severity Low - Database flickering resolved by auto-scaling' },
   completedStepIds: ['s-i-1'],
-  stepFeedback: {}, activityLog: [],
+  stepFeedback: {}, 
+  activityLog: [
+      { id: 'l-it-1', userId: 'u-9', userName: 'Grace Hopper', action: 'Run initiated', timestamp: getDate(40, 3, 15) },
+      { id: 'l-it-2', userId: 'u-9', userName: 'Grace Hopper', action: 'Acknowledged Alert & Declared Severity', timestamp: getDate(40, 3, 16) },
+      { id: 'l-it-3', userId: 'u-9', userName: 'Grace Hopper', action: 'Cancelled Run: False Alarm resolved', timestamp: getDate(40, 3, 45) }
+  ],
   healthScore: 50
 });
 
@@ -347,20 +371,25 @@ runs.push({
 runs.push({
   id: 'run-fin-curr', rootProcessId: p_finance_root, versionId: 'p-fin-v2',
   processTitle: 'Global Month-End Close', runName: 'Close - March 2025',
-  startedBy: 'Bob Martin', startedAt: getDate(2),
+  startedBy: 'Bob Martin', startedAt: getDate(2, 9, 0),
   dueAt: getFutureDate(3), // Due in 3 days
   healthScore: 95, // Healthy
   status: 'IN_PROGRESS',
   stepValues: { 's-f-2': 'Variance: $12.50' },
   completedStepIds: ['s-f-1', 's-f-2'], // Steps 3 (Controller/Alice) and 4 (Controller/Alice) are next
-  stepFeedback: {}, activityLog: [{ id: 'l-curr-1', userId: 'u-2', userName: 'Bob Martin', action: 'Completed Intercompany Confirmation', timestamp: getDate(1) }]
+  stepFeedback: {}, 
+  activityLog: [
+      { id: 'l-curr-1', userId: 'u-2', userName: 'Bob Martin', action: 'Run initiated', timestamp: getDate(2, 9, 0) },
+      { id: 'l-curr-2', userId: 'u-2', userName: 'Bob Martin', action: 'Uploaded Bank Reconciliations', timestamp: getDate(2, 11, 30) },
+      { id: 'l-curr-3', userId: 'u-2', userName: 'Bob Martin', action: 'Completed Intercompany Confirmation', timestamp: getDate(1, 14, 15) }
+  ]
 });
 
 // ACTIVE: Onboarding (IN REVIEW - Pending HR Director)
 runs.push({
   id: 'run-hr-1', rootProcessId: p_hr_root, versionId: 'p-hr-v3',
   processTitle: 'Employee Onboarding Pipeline', runName: 'Onboard: John Doe (Eng)',
-  startedBy: 'Tina Fey', startedAt: getDate(3),
+  startedBy: 'Tina Fey', startedAt: getDate(3, 10, 0),
   dueAt: getFutureDate(1), // Due tomorrow
   healthScore: 88,
   status: 'IN_REVIEW',
@@ -369,30 +398,42 @@ runs.push({
       's-h-3': 'https://nexus.okta.com/users/jdoe/logs' 
   },
   completedStepIds: ['s-h-1', 's-h-2', 's-h-3', 's-h-4', 's-h-5'],
-  stepFeedback: {}, activityLog: [{ id: 'l-hr-1', userId: 'u-6', userName: 'Tina Fey', action: 'Submitted for Review', timestamp: getDate(0) }]
+  stepFeedback: {}, 
+  activityLog: [
+      { id: 'l-hr-1', userId: 'u-6', userName: 'Tina Fey', action: 'Run initiated', timestamp: getDate(3, 10, 0) },
+      { id: 'l-hr-2', userId: 'u-6', userName: 'Tina Fey', action: 'Uploaded Offer Letter', timestamp: getDate(3, 10, 5) },
+      { id: 'l-hr-3', userId: 'u-9', userName: 'Grace Hopper', action: 'Provisioned Laptop', timestamp: getDate(2, 15, 30) },
+      { id: 'l-hr-4', userId: 'u-9', userName: 'Grace Hopper', action: 'Created SSO Accounts', timestamp: getDate(2, 16, 0) },
+      { id: 'l-hr-5', userId: 'u-15', userName: 'Ursula K.', action: 'Issued Building Badge', timestamp: getDate(1, 9, 0) },
+      { id: 'l-hr-6', userId: 'u-6', userName: 'Tina Fey', action: 'Submitted for Review', timestamp: getDate(0, 11, 0) }
+  ]
 });
 
 // ACTIVE: Onboarding (BLOCKED - IT issue)
 runs.push({
   id: 'run-hr-2', rootProcessId: p_hr_root, versionId: 'p-hr-v3',
   processTitle: 'Employee Onboarding Pipeline', runName: 'Onboard: Jane Smith (Sales)',
-  startedBy: 'Tina Fey', startedAt: getDate(5),
+  startedBy: 'Tina Fey', startedAt: getDate(5, 14, 0),
   dueAt: getDate(-1), // OVERDUE by 1 day!
   healthScore: 45, // CRITICAL
   status: 'IN_PROGRESS',
   stepValues: {},
   completedStepIds: ['s-h-1'],
   stepFeedback: {
-    's-h-2': [{ id: 'fb-hr-2', stepId: 's-h-2', userId: 'u-8', userName: 'David Chen', text: 'MacBook Pros are out of stock. ETA 2 days. Cannot provision asset tag yet.', type: 'BLOCKER', createdAt: getDate(1), resolved: false }]
+    's-h-2': [{ id: 'fb-hr-2', stepId: 's-h-2', userId: 'u-8', userName: 'David Chen', text: 'MacBook Pros are out of stock. ETA 2 days. Cannot provision asset tag yet.', type: 'BLOCKER', createdAt: getDate(1, 10, 0), resolved: false }]
   },
-  activityLog: []
+  activityLog: [
+      { id: 'l-hr2-1', userId: 'u-6', userName: 'Tina Fey', action: 'Run initiated', timestamp: getDate(5, 14, 0) },
+      { id: 'l-hr2-2', userId: 'u-6', userName: 'Tina Fey', action: 'Uploaded Offer Letter', timestamp: getDate(5, 14, 10) },
+      { id: 'l-hr2-3', userId: 'u-8', userName: 'David Chen', action: 'Added BLOCKER: Hardware Stockout', timestamp: getDate(1, 10, 0) }
+  ]
 });
 
 // ACTIVE: Vendor Assessment (READY TO SUBMIT)
 runs.push({
   id: 'run-comp-curr', rootProcessId: p_comp_root, versionId: 'p-comp-v1',
   processTitle: 'Vendor Security Assessment', runName: 'Vendor: SuperSaaS Inc',
-  startedBy: 'Alice Dubois', startedAt: getDate(4),
+  startedBy: 'Alice Dubois', startedAt: getDate(4, 13, 0),
   dueAt: getFutureDate(10),
   healthScore: 98,
   status: 'READY_TO_SUBMIT',
@@ -403,27 +444,36 @@ runs.push({
   },
   completedStepIds: ['s-c-1', 's-c-2', 's-c-3', 's-c-4', 's-c-5'],
   stepFeedback: {
-    's-c-3': [{ id: 'fb-comp-1', stepId: 's-c-3', userId: 'u-13', userName: 'Rosa Parks', text: 'ISO cert expires next month, please flag for renewal.', type: 'ADVISORY', createdAt: getDate(2), resolved: false }]
+    's-c-3': [{ id: 'fb-comp-1', stepId: 's-c-3', userId: 'u-13', userName: 'Rosa Parks', text: 'ISO cert expires next month, please flag for renewal.', type: 'ADVISORY', createdAt: getDate(2, 16, 0), resolved: false }]
   },
   activityLog: [
-      { id: 'l-comp-5', userId: 'u-10', userName: 'Noah Sols', action: 'Completed Step 5: Risk Scoring', timestamp: getDate(0) },
-      { id: 'l-comp-4', userId: 'u-12', userName: 'Eva Rossi', action: 'Completed Step 4: DPA', timestamp: getDate(1) }
+      { id: 'l-comp-1', userId: 'u-1', userName: 'Alice Dubois', action: 'Run initiated', timestamp: getDate(4, 13, 0) },
+      { id: 'l-comp-2', userId: 'u-1', userName: 'Alice Dubois', action: 'Uploaded SOC2 Report', timestamp: getDate(4, 13, 30) },
+      { id: 'l-comp-3', userId: 'u-13', userName: 'Rosa Parks', action: 'Added Advisory Feedback', timestamp: getDate(2, 16, 0) },
+      { id: 'l-comp-4', userId: 'u-12', userName: 'Eva Rossi', action: 'Completed DPA Step', timestamp: getDate(1, 11, 0) },
+      { id: 'l-comp-5', userId: 'u-10', userName: 'Noah Sols', action: 'Completed Risk Scoring', timestamp: getDate(0, 14, 0) }
   ]
 });
 
 // GENERATE 30 RANDOM COMPLETED FILLER RUNS
 fillerProcesses.slice(0, 10).forEach((proc, i) => {
+    const startDay = 100 + i;
     runs.push({
         id: `run-fill-hist-${i}`, rootProcessId: proc.rootId, versionId: proc.id,
         processTitle: proc.title, runName: `${proc.title} - Ref #${1000+i}`,
-        startedBy: 'System', startedAt: getDate(100 + i), completedAt: getDate(99 + i),
+        startedBy: 'System', startedAt: getDate(startDay, 9, 0), completedAt: getDate(startDay - 1, 17, 0),
         status: 'COMPLETED', 
         stepValues: {
             [`s-fil-${i}-0`]: 'Confirmed', 
             [`s-fil-${i}-1`]: 'Approved'
         }, 
         completedStepIds: proc.steps.map(s => s.id),
-        stepFeedback: {}, activityLog: [],
+        stepFeedback: {}, 
+        activityLog: [
+            { id: `l-fill-${i}-1`, userId: 'u-1', userName: 'System', action: 'Run initiated', timestamp: getDate(startDay, 9, 0) },
+            { id: `l-fill-${i}-2`, userId: 'u-1', userName: 'System', action: 'All tasks completed', timestamp: getDate(startDay, 10, 30) },
+            { id: `l-fill-${i}-3`, userId: 'u-1', userName: 'System', action: 'Run Archived', timestamp: getDate(startDay - 1, 17, 0) }
+        ],
         healthScore: 100
     });
 });
