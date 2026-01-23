@@ -7,6 +7,7 @@ import { useUser } from '../contexts/UserContext';
 import { GovernanceUnit } from './governance/GovernanceUnit';
 import { RectoStepItem } from './Recto/RectoStepItem';
 import { StatusBadge } from './ui/StatusBadge';
+import { ReviewCycleSlider } from './ui/ReviewCycleSlider';
 
 interface RectoEditorProps {
   process: ProcessDefinition;
@@ -385,7 +386,7 @@ const RectoEditor: React.FC<RectoEditorProps> = ({
                         </button>
                     </div>
 
-                    {/* Review Frequency Selector */}
+                    {/* Review Cycle Slider */}
                     <div className="space-y-3">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-2">
                             REVIEW CYCLE
@@ -396,15 +397,13 @@ const RectoEditor: React.FC<RectoEditorProps> = ({
                                 </div>
                             </div>
                         </span>
-                        <CustomSelect 
-                            value={String(local.review_frequency_days)} 
-                            onChange={(val) => handleChange({ review_frequency_days: parseInt(val) })} 
-                            options={reviewFrequencyOptions} 
+                        <ReviewCycleSlider 
+                            value={local.review_frequency_days || 180} 
+                            onChange={(days) => handleChange({ review_frequency_days: days })} 
                             disabled={effectiveReadOnly} 
-                            className="text-sm" 
                         />
                         {local.status === 'PUBLISHED' && (
-                            <div className="text-[9px] text-slate-400 flex items-center gap-1.5">
+                            <div className="text-[9px] text-slate-400 flex items-center gap-1.5 mt-3">
                                 <Calendar size={10} />
                                 Next review: {expirationDate.toLocaleDateString()}
                             </div>

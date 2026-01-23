@@ -14,21 +14,21 @@ import {
   Globe,
   Shield
 } from 'lucide-react';
-import { calculateStatus, resolveEffectiveUser, getProcessGovernance, hasGovernancePermission } from './services/governance';
-import { ProcessDefinition, ProcessRun, VersionStatus, StepType, Notification } from './types';
-import RectoEditor from './components/RectoEditor';
-import VersoExecution from './components/VersoExecution';
-import RunProcessModal from './components/RunProcessModal';
-import TaskCenter from './components/TaskCenter';
-import Dashboard from './components/Dashboard';
-import TeamManagement from './components/TeamManagement';
-import Layout from './components/Layout';
-import ActiveRuns from './components/ActiveRuns';
+import { calculateStatus, resolveEffectiveUser, getProcessGovernance, hasGovernancePermission } from '../services/governance';
+import { ProcessDefinition, ProcessRun, VersionStatus, StepType, Notification } from '../types';
+import RectoEditor from './RectoEditor';
+import VersoExecution from './VersoExecution';
+import RunProcessModal from './RunProcessModal';
+import TaskCenter from './TaskCenter';
+import Dashboard from './Dashboard';
+import TeamManagement from './TeamManagement';
+import Layout from './Layout';
+import ActiveRuns from './ActiveRuns';
 
 // Context Imports
-import { UserProvider, useUser } from './contexts/UserContext';
-import { DataProvider, useData } from './contexts/DataContext';
-import { UIProvider, useUI } from './contexts/UIContext';
+import { UserProvider, useUser } from '../contexts/UserContext';
+import { DataProvider, useData } from '../contexts/DataContext';
+import { UIProvider, useUI } from '../contexts/UIContext';
 
 type ViewState = 'DASHBOARD' | 'RECTO_EDITOR' | 'VERSO_EXECUTION';
 type TabState = 'MY_TASKS' | 'DASHBOARD' | 'LIBRARY' | 'PROCESS_RUNS' | 'COMPLETED_RUNS' | 'TEAM' | 'REVIEWS' | 'BILLING';
@@ -391,7 +391,7 @@ function InnerApp() {
       activeTab={activeTab} 
       onNavigate={handleNavigate} 
       libraryContext={libraryContext} 
-      reviewRequiredCount={processes.filter(p => p.status === 'PUBLISHED' && (calculateStatus(p) === 'OUTDATED' || calculateStatus(p) === 'DUE_SOON')).length} 
+      reviewRequiredCount={processes.filter(p => p.status === 'PUBLISHED' && (calculateStatus(p) === 'EXPIRED' || calculateStatus(p) === 'DUE_SOON')).length} 
       myTasksCount={tasks.filter(t => t.status === 'OPEN' && resolveEffectiveUser(t.assigneeUserId, t.assigneeJobTitle, t.assigneeTeamId, users, teams).id === currentUser.id).length}
       onNotificationClick={handleNotificationAction}
     >
