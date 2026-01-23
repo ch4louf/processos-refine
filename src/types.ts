@@ -164,7 +164,8 @@ export interface UserPermissions {
   canExecute: boolean;       
   canVerifyRun: boolean;     
   canManageTeam: boolean;    
-  canAccessBilling: boolean; 
+  canAccessBilling: boolean;
+  canAccessWorkspace: boolean;
 }
 
 export interface User {

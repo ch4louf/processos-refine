@@ -19,11 +19,11 @@ const getFutureDate = (daysOffset: number) => {
 const generateId = (prefix: string) => `${prefix}-${Math.random().toString(36).substr(2, 9)}`;
 
 // --- PERMISSIONS PRESETS ---
-const adminPerms: UserPermissions = { canDesign: true, canVerifyDesign: true, canExecute: true, canVerifyRun: true, canManageTeam: true, canAccessBilling: true };
-const managerPerms: UserPermissions = { canDesign: true, canVerifyDesign: true, canExecute: true, canVerifyRun: true, canManageTeam: false, canAccessBilling: false };
-const opsPerms: UserPermissions = { canDesign: false, canVerifyDesign: false, canExecute: true, canVerifyRun: false, canManageTeam: false, canAccessBilling: false };
-const compliancePerms: UserPermissions = { canDesign: false, canVerifyDesign: false, canExecute: false, canVerifyRun: true, canManageTeam: false, canAccessBilling: false };
-const readOnlyPerms: UserPermissions = { canDesign: false, canVerifyDesign: false, canExecute: false, canVerifyRun: false, canManageTeam: false, canAccessBilling: false };
+const adminPerms: UserPermissions = { canDesign: true, canVerifyDesign: true, canExecute: true, canVerifyRun: true, canManageTeam: true, canAccessBilling: true, canAccessWorkspace: true };
+const managerPerms: UserPermissions = { canDesign: true, canVerifyDesign: true, canExecute: true, canVerifyRun: true, canManageTeam: false, canAccessBilling: false, canAccessWorkspace: false };
+const opsPerms: UserPermissions = { canDesign: false, canVerifyDesign: false, canExecute: true, canVerifyRun: false, canManageTeam: false, canAccessBilling: false, canAccessWorkspace: false };
+const compliancePerms: UserPermissions = { canDesign: false, canVerifyDesign: false, canExecute: false, canVerifyRun: true, canManageTeam: false, canAccessBilling: false, canAccessWorkspace: false };
+const readOnlyPerms: UserPermissions = { canDesign: false, canVerifyDesign: false, canExecute: false, canVerifyRun: false, canManageTeam: false, canAccessBilling: false, canAccessWorkspace: false };
 
 // --- 1. NEXUS CORP DIRECTORY (25 Users) ---
 export const MOCK_USERS: User[] = [
