@@ -21,6 +21,26 @@ export const ReviewCycleSlider: React.FC<ReviewCycleSliderProps> = ({
   const daysToMonths = useCallback((days: number) => Math.round(days / 30), []);
   const monthsToDays = useCallback((months: number) => months * 30, []);
 
+  // Find closest tick for months mode
+  const getClosestTick = useCallback((months: number) => {
+    let closest = MONTH_TICKS[0];
+    let minDiff = Math.abs(months - closest);
+    for (const tick of MONTH_TICKS) {
+      const diff = Math.abs(months - tick);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closest = tick;
+      }
+    }
+    return closest;
+  }, []);
+
+  // Get tick index for slider (0-3 for ticks 3,6,9,12)
+  const getTickIndex = useCallback((months: number) => {
+    const idx = MONTH_TICKS.indexOf(months);
+    return idx >= 0 ? idx : 0;
+  }, []);
+
   // Sync inputs with value
   useEffect(() => {
     setMonthsInput(String(daysToMonths(value)));
@@ -31,15 +51,22 @@ export const ReviewCycleSlider: React.FC<ReviewCycleSliderProps> = ({
   const percentage = useMemo(() => {
     if (activeMode === 'months') {
       const months = daysToMonths(value);
-      return ((months - 1) / 11) * 100; // 1-12 range
+      const tickIdx = MONTH_TICKS.indexOf(months);
+      if (tickIdx >= 0) {
+        return (tickIdx / (MONTH_TICKS.length - 1)) * 100;
+      }
+      // For manual values, interpolate
+      return ((months - 1) / 11) * 100;
     }
-    return ((value - 1) / 364) * 100; // 1-365 range
+    return ((value - 1) / 364) * 100;
   }, [value, activeMode, daysToMonths]);
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const sliderValue = parseInt(e.target.value);
     if (activeMode === 'months') {
-      onChange(monthsToDays(sliderValue));
+      // Slider value is tick index (0-3), convert to actual month value
+      const monthValue = MONTH_TICKS[sliderValue];
+      onChange(monthsToDays(monthValue));
     } else {
       onChange(sliderValue);
     }
@@ -89,10 +116,14 @@ export const ReviewCycleSlider: React.FC<ReviewCycleSliderProps> = ({
   const selectDaysMode = () => setActiveMode('days');
 
   // Current slider values based on mode
-  const sliderMin = activeMode === 'months' ? 1 : 1;
-  const sliderMax = activeMode === 'months' ? 12 : 365;
-  const sliderValue = activeMode === 'months' ? daysToMonths(value) : value;
-  const sliderStep = activeMode === 'months' ? 1 : 1;
+  // In months mode: slider goes 0-3 (indexes of MONTH_TICKS)
+  // In days mode: slider goes 1-365
+  const sliderMin = activeMode === 'months' ? 0 : 1;
+  const sliderMax = activeMode === 'months' ? MONTH_TICKS.length - 1 : 365;
+  const sliderValue = activeMode === 'months' 
+    ? getTickIndex(getClosestTick(daysToMonths(value))) 
+    : value;
+  const sliderStep = 1;
 
   return (
     <div className={`${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
