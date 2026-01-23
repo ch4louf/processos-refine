@@ -60,7 +60,11 @@ export const MOCK_USERS: User[] = [
   { id: 'u-20', firstName: 'Yara', lastName: 'Shahidi', email: 'yara@nexus.corp', jobTitle: 'Brand Mgr', team: 'Marketing', status: 'ACTIVE', permissions: opsPerms },
 
   // EXTERNAL / AUDITORS
-  { id: 'u-guest', firstName: 'External', lastName: 'Auditor', email: 'audit@kpmg.fake', jobTitle: 'External Auditor', team: 'External', status: 'ACTIVE', permissions: readOnlyPerms }
+  { id: 'u-guest', firstName: 'External', lastName: 'Auditor', email: 'audit@kpmg.fake', jobTitle: 'External Auditor', team: 'External', status: 'ACTIVE', permissions: readOnlyPerms },
+
+  // DEACTIVATED USERS (for realistic data)
+  { id: 'u-21', firstName: 'Marcus', lastName: 'Cole', email: 'marcus@nexus.corp', jobTitle: 'Former Sales Rep', team: 'Sales', status: 'INACTIVE', permissions: readOnlyPerms },
+  { id: 'u-22', firstName: 'Linda', lastName: 'Chen', email: 'linda@nexus.corp', jobTitle: 'Former IT Support', team: 'IT', status: 'INACTIVE', permissions: readOnlyPerms }
 ];
 
 export const MOCK_TEAMS: Team[] = [
