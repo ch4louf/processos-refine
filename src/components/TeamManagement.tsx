@@ -188,25 +188,38 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
       { label: 'All Time', value: 'all' }
   ];
 
-  // Filter: hide INACTIVE users by default unless explicitly showing them via filterStatus
+  // Compute unique values for column filters
+  const uniqueTeams = useMemo(() => [...new Set(initialUsers.map(u => u.team))].sort(), [initialUsers]);
+  const uniqueJobTitles = useMemo(() => [...new Set(initialUsers.map(u => u.jobTitle).filter(Boolean))].sort(), [initialUsers]);
+  const statusOptions = ['ACTIVE', 'INACTIVE'];
+
+  // Local column filters
+  const [filterTeam, setFilterTeam] = useState<string | null>(null);
+  const [filterJobTitle, setFilterJobTitle] = useState<string | null>(null);
+
+  // Filter users based on all column filters
   let filteredUsers = initialUsers.filter(u => {
     // Search filter
     if (searchTerm && !`${u.firstName} ${u.lastName} ${u.team} ${u.email} ${u.jobTitle}`.toLowerCase().includes(searchTerm.toLowerCase())) {
       return false;
     }
-    // Status filter: hide INACTIVE by default, show only if filterStatus === 'INACTIVE' or 'ALL'
-    if (filterStatus === 'INACTIVE') return u.status === 'INACTIVE';
-    if (filterStatus === 'ALL') return true;
-    // Default: show only ACTIVE users
-    return u.status === 'ACTIVE';
+    // Status filter
+    if (filterStatus && filterStatus !== 'ALL' && u.status !== filterStatus) return false;
+    // Team filter
+    if (filterTeam && u.team !== filterTeam) return false;
+    // Job Title filter
+    if (filterJobTitle && u.jobTitle !== filterJobTitle) return false;
+    return true;
   });
   
+  // Sort users
   filteredUsers.sort((a, b) => {
     let vA = '', vB = '';
     switch (sortConfig.key) { 
       case 'lastName': vA = a.lastName.toLowerCase(); vB = b.lastName.toLowerCase(); break; 
       case 'team': vA = a.team.toLowerCase(); vB = b.team.toLowerCase(); break; 
       case 'status': vA = a.status; vB = b.status; break; 
+      case 'jobTitle': vA = (a.jobTitle || '').toLowerCase(); vB = (b.jobTitle || '').toLowerCase(); break;
       default: vA = a.lastName.toLowerCase(); vB = b.lastName.toLowerCase(); 
     }
     if (vA < vB) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -214,7 +227,15 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
   });
 
   const inactiveCount = initialUsers.filter(u => u.status === 'INACTIVE').length;
-  const activeFilterCount = (searchTerm ? 1 : 0) + (filterStatus ? 1 : 0);
+  const activeFilterCount = (searchTerm ? 1 : 0) + (filterStatus ? 1 : 0) + (filterTeam ? 1 : 0) + (filterJobTitle ? 1 : 0);
+
+  // Clear all filters helper
+  const clearAllFilters = () => {
+    onClearFilters();
+    setFilterStatus(null);
+    setFilterTeam(null);
+    setFilterJobTitle(null);
+  };
 
   // --- HANDLERS ---
 
@@ -556,21 +577,55 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
                             <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
                             <input className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-xs w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm" placeholder="Find member..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                         </div>
-                        {inactiveCount > 0 && (
-                            <button 
-                                onClick={() => setFilterStatus(filterStatus === 'ALL' ? null : 'ALL')}
-                                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all border ${
-                                    filterStatus === 'ALL' 
-                                        ? 'bg-slate-100 border-slate-300 text-slate-700' 
-                                        : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600'
-                                }`}
-                                title={filterStatus === 'ALL' ? 'Hide inactive users' : `Show ${inactiveCount} inactive user${inactiveCount > 1 ? 's' : ''}`}
-                            >
-                                <UserX size={14} />
-                                <span className="hidden lg:inline">{filterStatus === 'ALL' ? 'Hide Inactive' : `+${inactiveCount} Inactive`}</span>
-                                <span className="lg:hidden">{inactiveCount}</span>
-                            </button>
-                        )}
+                        {/* Column filters */}
+                        <div className="flex items-center gap-2">
+                            {/* Status Filter */}
+                            <div className="relative">
+                                <select 
+                                    value={filterStatus || ''} 
+                                    onChange={(e) => setFilterStatus(e.target.value || null)}
+                                    className={`appearance-none pl-3 pr-7 py-2 rounded-lg text-xs font-bold border cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                                        filterStatus ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                                    }`}
+                                >
+                                    <option value="">Status</option>
+                                    <option value="ACTIVE">Active</option>
+                                    <option value="INACTIVE">Inactive ({inactiveCount})</option>
+                                    <option value="ALL">All</option>
+                                </select>
+                                <ArrowDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
+                            </div>
+
+                            {/* Team Filter */}
+                            <div className="relative">
+                                <select 
+                                    value={filterTeam || ''} 
+                                    onChange={(e) => setFilterTeam(e.target.value || null)}
+                                    className={`appearance-none pl-3 pr-7 py-2 rounded-lg text-xs font-bold border cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                                        filterTeam ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                                    }`}
+                                >
+                                    <option value="">Team</option>
+                                    {uniqueTeams.map(t => <option key={t} value={t}>{t}</option>)}
+                                </select>
+                                <ArrowDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
+                            </div>
+
+                            {/* Job Title Filter */}
+                            <div className="relative">
+                                <select 
+                                    value={filterJobTitle || ''} 
+                                    onChange={(e) => setFilterJobTitle(e.target.value || null)}
+                                    className={`appearance-none pl-3 pr-7 py-2 rounded-lg text-xs font-bold border cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-[140px] truncate ${
+                                        filterJobTitle ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                                    }`}
+                                >
+                                    <option value="">Job Title</option>
+                                    {uniqueJobTitles.map(j => <option key={j} value={j}>{j}</option>)}
+                                </select>
+                                <ArrowDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
+                            </div>
+                        </div>
                     </>
                 )}
                 
@@ -583,7 +638,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
                     </>
                 )}
 
-                {activeFilterCount > 0 && <button onClick={() => { onClearFilters(); setFilterStatus(null); }} className="flex items-center gap-2 px-3 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg text-xs font-bold transition-colors"><RotateCcw size={14} /> Reset</button>}
+                {activeFilterCount > 0 && <button onClick={clearAllFilters} className="flex items-center gap-2 px-3 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg text-xs font-bold transition-colors"><RotateCcw size={14} /> Reset</button>}
                 
                 {canManage && (
                     <button onClick={() => activeTab === 'MEMBERS' ? setIsInviteModalOpen(true) : (setNewTeam({ name: '', description: '', color: 'indigo' }), setIsTeamModalOpen(true))} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 font-medium transition-colors shrink-0 animate-in fade-in">
@@ -599,9 +654,9 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
                 <>
                     <div className="grid grid-cols-12 gap-6 px-8 py-4 bg-slate-50 border-b border-slate-200 text-[11px] font-black text-slate-500 uppercase tracking-wider select-none z-20 items-center">
                         <div className="col-span-3 cursor-pointer hover:text-indigo-600 flex items-center gap-1" onClick={() => onSort('lastName')}>Identity {sortConfig.key === 'lastName' && (sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}</div>
-                        <div className="col-span-2 text-center">Status</div>
+                        <div className="col-span-2 text-center cursor-pointer hover:text-indigo-600 flex items-center justify-center gap-1" onClick={() => onSort('status')}>Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}</div>
                         <div className="col-span-2 cursor-pointer hover:text-indigo-600 flex items-center gap-1" onClick={() => onSort('team')}>Team {sortConfig.key === 'team' && (sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}</div>
-                        <div className="col-span-2">Job Title</div>
+                        <div className="col-span-2 cursor-pointer hover:text-indigo-600 flex items-center gap-1" onClick={() => onSort('jobTitle')}>Job Title {sortConfig.key === 'jobTitle' && (sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}</div>
                         <div className="col-span-2">Permissions</div>
                         <div className="col-span-1 text-right">Action</div>
                     </div>
