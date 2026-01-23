@@ -837,21 +837,6 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
                         </div>
                     </div>
 
-                    {/* Admin Role Toggle - Master Switch */}
-                    <div className="space-y-3">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Workspace Role</label>
-                        <PermissionToggle 
-                            active={isPanelAdmin} 
-                            onClick={toggleAdminRole} 
-                            label="Workspace Admin" 
-                            subLabel="Full access to all features and settings"
-                            icon={Crown}
-                            colorClass="amber"
-                            isInherited={false}
-                            fullWidth
-                            disabled={!isCurrentUserAdmin}
-                        />
-                    </div>
 
                     {/* Quick Roles */}
                     <div>
