@@ -565,7 +565,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
                                         <div className="animate-in fade-in zoom-in-95"><input className="w-full border border-slate-300 rounded px-3 py-2 bg-white text-xs outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200" value={inlineForm.jobTitle || ''} onChange={e => setInlineForm({...inlineForm, jobTitle: e.target.value})} placeholder="Job Title" /></div>
                                     ) : user.jobTitle}
                                 </div>
-                                <div className="col-span-2 flex flex-wrap justify-start gap-1.5">
+                                <div className="col-span-2 flex flex-wrap justify-center gap-1.5">
                                     {isAdmin ? <PermissionBadge icon={Crown} label="Admin" colorClass="amber" showLabel /> : isAuditor ? <PermissionBadge icon={Eye} label="Auditor" colorClass="slate" showLabel /> : (
                                         <>
                                           {activePerms.map((perm, idx) => (
