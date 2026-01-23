@@ -8,12 +8,12 @@ interface WorkspaceSettingsProps {}
 const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = () => {
   const { workspace, updateWorkspace, currentUser } = useUser();
   
-  // Local state for settings - in real app this would come from workspace settings
+  // Local state for settings - default to false (not blocking)
   const [blockRunsOnExpired, setBlockRunsOnExpired] = useState(
-    (workspace.settings as any)?.blockRunsOnExpired ?? true
+    (workspace.settings as any)?.blockRunsOnExpired ?? false
   );
   const [blockNewRunsOnExpired, setBlockNewRunsOnExpired] = useState(
-    (workspace.settings as any)?.blockNewRunsOnExpired ?? true
+    (workspace.settings as any)?.blockNewRunsOnExpired ?? false
   );
 
   const handleSaveSettings = () => {
