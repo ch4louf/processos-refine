@@ -156,7 +156,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
     canExecute: false,
     canVerifyRun: false,
     canManageTeam: false,
-    canAccessBilling: false
+    canAccessBilling: false,
+    canAccessWorkspace: false
   };
 
   const panelUser = useMemo(() => initialUsers.find(u => u.id === activePanelUserId), [initialUsers, activePanelUserId]);
@@ -414,7 +415,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
           canExecute: true, 
           canVerifyRun: true, 
           canManageTeam: true, 
-          canAccessBilling: true 
+          canAccessBilling: true,
+          canAccessWorkspace: true
         };
     } else if (preset === 'AUDITOR') {
         newPerms = { ...defaultPerms }; 
@@ -427,22 +429,91 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
     performUserUpdate(panelUser.id, { ...panelUser, permissions: newPerms });
   };
 
+  // Check if current user is admin (has role in user_roles - simulated via canAccessWorkspace for now)
+  const isCurrentUserAdmin = currentUser.permissions.canAccessWorkspace;
+  
+  // Permission protection rules:
+  // - Admin toggle: only admin can toggle
+  // - canAccessWorkspace: only admin can toggle
+  // - canAccessBilling: admin OR canManageTeam can toggle
+  // - Others: admin/manager can toggle
+  const canTogglePermission = (key: keyof UserPermissions): boolean => {
+    if (!canManage) return false;
+    
+    // No one can modify a user who has higher privileges unless you're admin
+    if (panelUser?.permissions.canAccessWorkspace && !isCurrentUserAdmin) return false;
+    
+    // Admin-only toggles
+    if (key === 'canAccessWorkspace') return isCurrentUserAdmin;
+    
+    // Admin OR canManageTeam toggles
+    if (key === 'canAccessBilling') return isCurrentUserAdmin || currentUser.permissions.canManageTeam;
+    
+    // All others: admin/manager
+    return true;
+  };
+
   const togglePanelPermission = (key: keyof UserPermissions) => {
     if (!panelUser || !canManage) return;
-    if (panelUser.permissions.canManageTeam && !currentUser.permissions.canManageTeam) {
-         alert("Access Denied: Restricted to Administrators.");
-         return;
+    
+    if (!canTogglePermission(key)) {
+      showToast("Access Denied: Insufficient permissions.", 'ERROR');
+      return;
     }
+    
     if (panelUser.id === currentUser.id && key === 'canManageTeam' && panelUser.permissions.canManageTeam) {
-        alert("Safety Lock: You cannot remove your own Team Management rights.");
+        showToast("Safety Lock: You cannot remove your own Team Management rights.", 'ERROR');
         return;
     }
+    if (panelUser.id === currentUser.id && key === 'canAccessWorkspace' && panelUser.permissions.canAccessWorkspace) {
+        showToast("Safety Lock: You cannot remove your own Admin rights.", 'ERROR');
+        return;
+    }
+    
     let newPerms = { ...panelUser.permissions };
     newPerms[key] = !newPerms[key];
     performUserUpdate(panelUser.id, { ...panelUser, permissions: newPerms });
   };
 
-  const isPanelAdmin = panelUser?.permissions.canManageTeam && panelUser?.permissions.canAccessBilling;
+  // Admin toggle handler - cascades all permissions
+  const toggleAdminRole = () => {
+    if (!panelUser || !isCurrentUserAdmin) {
+      showToast("Access Denied: Only admins can grant admin role.", 'ERROR');
+      return;
+    }
+    if (panelUser.id === currentUser.id && isPanelAdmin) {
+      showToast("Safety Lock: You cannot remove your own Admin role.", 'ERROR');
+      return;
+    }
+    
+    const willBeAdmin = !isPanelAdmin;
+    if (willBeAdmin) {
+      // Cascade ON: all permissions activated
+      performUserUpdate(panelUser.id, { 
+        ...panelUser, 
+        permissions: { 
+          canDesign: true, 
+          canVerifyDesign: true, 
+          canExecute: true, 
+          canVerifyRun: true, 
+          canManageTeam: true, 
+          canAccessBilling: true,
+          canAccessWorkspace: true
+        } 
+      });
+    } else {
+      // Turn off Admin: reset to standard
+      performUserUpdate(panelUser.id, { 
+        ...panelUser, 
+        permissions: { 
+          ...defaultPerms,
+          canExecute: true 
+        } 
+      });
+    }
+  };
+
+  const isPanelAdmin = panelUser?.permissions.canAccessWorkspace === true;
   const isPanelAuditor = panelUser && !Object.values(panelUser.permissions).some(Boolean);
 
   return (
@@ -766,11 +837,27 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
                         </div>
                     </div>
 
+                    {/* Admin Role Toggle - Master Switch */}
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Workspace Role</label>
+                        <PermissionToggle 
+                            active={isPanelAdmin} 
+                            onClick={toggleAdminRole} 
+                            label="Workspace Admin" 
+                            subLabel="Full access to all features and settings"
+                            icon={Crown}
+                            colorClass="amber"
+                            isInherited={false}
+                            fullWidth
+                            disabled={!isCurrentUserAdmin}
+                        />
+                    </div>
+
                     {/* Quick Roles */}
                     <div>
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Quick Role Presets</label>
                         <div className="grid grid-cols-3 gap-3">
-                            <RoleCard selected={isPanelAdmin} title="Admin" icon={Crown} colorClass="amber" onClick={() => applyRolePreset('ADMIN')} />
+                            <RoleCard selected={isPanelAdmin} title="Admin" icon={Crown} colorClass="amber" onClick={() => isCurrentUserAdmin && applyRolePreset('ADMIN')} />
                             <RoleCard selected={!isPanelAdmin && !isPanelAuditor} title="Standard" icon={Users} colorClass="indigo" onClick={() => applyRolePreset('STANDARD')} />
                             <RoleCard selected={isPanelAuditor} title="Auditor" icon={Eye} colorClass="slate" onClick={() => applyRolePreset('AUDITOR')} />
                         </div>
@@ -787,7 +874,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
                             subLabel="Can create and edit process templates"
                             icon={Pencil}
                             colorClass="indigo"
-                            disabled={isPanelAdmin}
+                            disabled={isPanelAdmin || !canTogglePermission('canDesign')}
+                            isInherited={isPanelAdmin}
                         />
                         <PermissionToggle 
                             active={panelUser.permissions.canVerifyDesign} 
@@ -796,7 +884,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
                             subLabel="Can approve and publish drafts"
                             icon={ShieldCheck}
                             colorClass="emerald"
-                            disabled={isPanelAdmin}
+                            disabled={isPanelAdmin || !canTogglePermission('canVerifyDesign')}
+                            isInherited={isPanelAdmin}
                         />
                          <PermissionToggle 
                             active={panelUser.permissions.canExecute} 
@@ -805,7 +894,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
                             subLabel="Can launch and execute runs"
                             icon={Zap}
                             colorClass="slate"
-                            disabled={isPanelAdmin}
+                            disabled={isPanelAdmin || !canTogglePermission('canExecute')}
+                            isInherited={isPanelAdmin}
                         />
                          <PermissionToggle 
                             active={panelUser.permissions.canVerifyRun} 
@@ -814,7 +904,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
                             subLabel="Can sign-off and approve completed runs"
                             icon={CheckSquare}
                             colorClass="emerald"
-                            disabled={isPanelAdmin}
+                            disabled={isPanelAdmin || !canTogglePermission('canVerifyRun')}
+                            isInherited={isPanelAdmin}
                         />
                          <PermissionToggle 
                             active={panelUser.permissions.canManageTeam} 
@@ -823,14 +914,28 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
                             subLabel="Can invite users and manage teams"
                             icon={Users}
                             colorClass="indigo"
+                            disabled={isPanelAdmin || !canTogglePermission('canManageTeam')}
+                            isInherited={isPanelAdmin}
                         />
                         <PermissionToggle 
                             active={panelUser.permissions.canAccessBilling} 
                             onClick={() => togglePanelPermission('canAccessBilling')} 
-                            label="Billing Admin" 
+                            label="Billing Access" 
                             subLabel="Can access invoices and subscription"
                             icon={CreditCard}
                             colorClass="amber"
+                            disabled={isPanelAdmin || !canTogglePermission('canAccessBilling')}
+                            isInherited={isPanelAdmin}
+                        />
+                        <PermissionToggle 
+                            active={panelUser.permissions.canAccessWorkspace} 
+                            onClick={() => togglePanelPermission('canAccessWorkspace')} 
+                            label="Workspace Settings" 
+                            subLabel="Can access and modify workspace configuration"
+                            icon={Settings}
+                            colorClass="amber"
+                            disabled={!isCurrentUserAdmin}
+                            isInherited={isPanelAdmin}
                         />
                     </div>
 
