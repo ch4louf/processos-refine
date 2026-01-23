@@ -31,8 +31,33 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUserId, setCurrentUserId] = useState<string>('');
 
   useEffect(() => {
-    // Initial load
-    const allUsers = userRepo.getAll();
+    // Initial load with permission migration
+    let allUsers = userRepo.getAll();
+    
+    // Migrate: ensure all users have canAccessWorkspace field
+    let needsMigration = false;
+    allUsers = allUsers.map(u => {
+      if (u.permissions && u.permissions.canAccessWorkspace === undefined) {
+        needsMigration = true;
+        // If user had all admin perms before, give them canAccessWorkspace
+        const wasAdmin = u.permissions.canDesign && u.permissions.canVerifyDesign && 
+                         u.permissions.canExecute && u.permissions.canVerifyRun && 
+                         u.permissions.canManageTeam && u.permissions.canAccessBilling;
+        return { 
+          ...u, 
+          permissions: { 
+            ...u.permissions, 
+            canAccessWorkspace: wasAdmin 
+          } 
+        };
+      }
+      return u;
+    });
+    
+    if (needsMigration) {
+      userRepo.setAll(allUsers);
+    }
+    
     setUsers(allUsers);
     
     // Initial Team Load
