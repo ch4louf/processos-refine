@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { User, UserPermissions, Team } from '../types';
 import { Users, Plus, ShieldCheck, Zap, UserX, Crown, Eye, CheckSquare, CreditCard, Pencil, Lock, Search, RotateCcw, X, Check, Mail, Settings, ArrowUp, ArrowDown, CheckCircle2, Trash2, User as UserIcon, ShieldAlert, LayoutGrid, Palette, Shield, FileText, Download, Calendar } from 'lucide-react';
 import CustomSelect from './CustomSelect';
+import ColumnHeaderFilter from './ui/ColumnHeaderFilter';
 import { useUser } from '../contexts/UserContext';
 import { useUI } from '../contexts/UIContext';
 
@@ -572,61 +573,10 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
 
             <div className="flex-1 flex justify-end items-center gap-2 pl-4">
                 {activeTab === 'MEMBERS' && (
-                    <>
-                        <div className="relative w-48 mr-2">
-                            <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
-                            <input className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-xs w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm" placeholder="Find member..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                        </div>
-                        {/* Column filters */}
-                        <div className="flex items-center gap-2">
-                            {/* Status Filter */}
-                            <div className="relative">
-                                <select 
-                                    value={filterStatus || ''} 
-                                    onChange={(e) => setFilterStatus(e.target.value || null)}
-                                    className={`appearance-none pl-3 pr-7 py-2 rounded-lg text-xs font-bold border cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                                        filterStatus ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
-                                    }`}
-                                >
-                                    <option value="">Status</option>
-                                    <option value="ACTIVE">Active</option>
-                                    <option value="INACTIVE">Inactive ({inactiveCount})</option>
-                                    <option value="ALL">All</option>
-                                </select>
-                                <ArrowDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
-                            </div>
-
-                            {/* Team Filter */}
-                            <div className="relative">
-                                <select 
-                                    value={filterTeam || ''} 
-                                    onChange={(e) => setFilterTeam(e.target.value || null)}
-                                    className={`appearance-none pl-3 pr-7 py-2 rounded-lg text-xs font-bold border cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                                        filterTeam ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
-                                    }`}
-                                >
-                                    <option value="">Team</option>
-                                    {uniqueTeams.map(t => <option key={t} value={t}>{t}</option>)}
-                                </select>
-                                <ArrowDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
-                            </div>
-
-                            {/* Job Title Filter */}
-                            <div className="relative">
-                                <select 
-                                    value={filterJobTitle || ''} 
-                                    onChange={(e) => setFilterJobTitle(e.target.value || null)}
-                                    className={`appearance-none pl-3 pr-7 py-2 rounded-lg text-xs font-bold border cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-[140px] truncate ${
-                                        filterJobTitle ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
-                                    }`}
-                                >
-                                    <option value="">Job Title</option>
-                                    {uniqueJobTitles.map(j => <option key={j} value={j}>{j}</option>)}
-                                </select>
-                                <ArrowDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
-                            </div>
-                        </div>
-                    </>
+                    <div className="relative w-48 mr-2">
+                        <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
+                        <input className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-xs w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm" placeholder="Find member..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    </div>
                 )}
                 
                 {canManage && (
@@ -653,10 +603,47 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
             {activeTab === 'MEMBERS' ? (
                 <>
                     <div className="grid grid-cols-12 gap-6 px-8 py-4 bg-slate-50 border-b border-slate-200 text-[11px] font-black text-slate-500 uppercase tracking-wider select-none z-20 items-center">
-                        <div className="col-span-3 cursor-pointer hover:text-indigo-600 flex items-center gap-1" onClick={() => onSort('lastName')}>Identity {sortConfig.key === 'lastName' && (sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}</div>
-                        <div className="col-span-2 text-center cursor-pointer hover:text-indigo-600 flex items-center justify-center gap-1" onClick={() => onSort('status')}>Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}</div>
-                        <div className="col-span-2 cursor-pointer hover:text-indigo-600 flex items-center gap-1" onClick={() => onSort('team')}>Team {sortConfig.key === 'team' && (sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}</div>
-                        <div className="col-span-2 cursor-pointer hover:text-indigo-600 flex items-center gap-1" onClick={() => onSort('jobTitle')}>Job Title {sortConfig.key === 'jobTitle' && (sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}</div>
+                        <ColumnHeaderFilter 
+                          label="Identity" 
+                          sortKey="lastName" 
+                          currentSort={sortConfig} 
+                          onSort={onSort} 
+                          className="col-span-3"
+                        />
+                        <ColumnHeaderFilter 
+                          label="Status" 
+                          sortKey="status" 
+                          currentSort={sortConfig} 
+                          onSort={onSort}
+                          filterOptions={[
+                            { label: 'Active', value: 'ACTIVE' },
+                            { label: `Inactive (${inactiveCount})`, value: 'INACTIVE' }
+                          ]}
+                          filterValue={filterStatus}
+                          onFilter={setFilterStatus}
+                          className="col-span-2"
+                          align="center"
+                        />
+                        <ColumnHeaderFilter 
+                          label="Team" 
+                          sortKey="team" 
+                          currentSort={sortConfig} 
+                          onSort={onSort}
+                          filterOptions={uniqueTeams.map(t => ({ label: t, value: t }))}
+                          filterValue={filterTeam}
+                          onFilter={setFilterTeam}
+                          className="col-span-2"
+                        />
+                        <ColumnHeaderFilter 
+                          label="Job Title" 
+                          sortKey="jobTitle" 
+                          currentSort={sortConfig} 
+                          onSort={onSort}
+                          filterOptions={uniqueJobTitles.map(j => ({ label: j, value: j }))}
+                          filterValue={filterJobTitle}
+                          onFilter={setFilterJobTitle}
+                          className="col-span-2"
+                        />
                         <div className="col-span-2">Permissions</div>
                         <div className="col-span-1 text-right">Action</div>
                     </div>
