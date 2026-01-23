@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ProcessDefinition, ProcessStep, StepType, User } from '../types';
-import { ArrowLeft, Send, ChevronDown, CheckCircle2, History, Settings, Play, Lock, Globe, RotateCcw, ThumbsUp, ThumbsDown, ShieldAlert, Activity, Info as InfoIcon, Pencil } from 'lucide-react';
-import { getProcessGovernance, hasGovernancePermission, isGlobalAdmin } from '../services/governance';
+import { ArrowLeft, Send, ChevronDown, CheckCircle2, History, Settings, Play, Lock, Globe, RotateCcw, ThumbsUp, ThumbsDown, ShieldAlert, Activity, Info as InfoIcon, Pencil, RefreshCw, Calendar, AlertTriangle, Clock } from 'lucide-react';
+import { getProcessGovernance, hasGovernancePermission, isGlobalAdmin, calculateStatus, canRefreshProcess, getExpirationDate, getDaysUntilExpiration, REVIEW_FREQUENCY_PRESETS, FreshnessStatus } from '../services/governance';
 import CustomSelect from './CustomSelect';
 import { useUser } from '../contexts/UserContext';
 import { GovernanceUnit } from './governance/GovernanceUnit';
@@ -22,12 +22,13 @@ interface RectoEditorProps {
   readOnly: boolean;
   onEdit: () => void;
   onRun?: () => void;
-  onViewHistory?: (rootId: string) => void; 
+  onViewHistory?: (rootId: string) => void;
+  onRefresh?: (p: ProcessDefinition) => void; // NEW: Refresh callback for Process Freshness System
 }
 
 const RectoEditor: React.FC<RectoEditorProps> = ({ 
   process, allVersions, onSwitchVersion, onSave, 
-  onSubmitReview, onRecallDraft, onPublish, onRejectReview, onReview, onBack, readOnly, onEdit, onViewHistory, onRun 
+  onSubmitReview, onRecallDraft, onPublish, onRejectReview, onReview, onBack, readOnly, onEdit, onViewHistory, onRun, onRefresh 
 }) => {
   const { users: availableUsers, workspace, currentUser, teams, getUserColor } = useUser();
   const [local, setLocal] = useState(process);
@@ -54,11 +55,18 @@ const RectoEditor: React.FC<RectoEditorProps> = ({
   const canDelegate = (isTeamLead || isSuperUser) && !effectiveReadOnly;
   const canPublish = currentUser.permissions.canVerifyDesign && hasGovernancePermission(currentUser, local, 'PUBLISHER', workspace, teams);
 
+  // Process Freshness System
+  const freshnessStatus = useMemo(() => calculateStatus(local), [local]);
+  const daysUntilExpiration = useMemo(() => getDaysUntilExpiration(local), [local]);
+  const expirationDate = useMemo(() => getExpirationDate(local), [local]);
+  const userCanRefresh = useMemo(() => canRefreshProcess(currentUser, local, workspace, teams), [currentUser, local, workspace, teams]);
+
   const activeUsers = useMemo(() => availableUsers.filter(u => u.status === 'ACTIVE'), [availableUsers]);
   const availableTeams = useMemo(() => Array.from(new Set(availableUsers.map(u => u.team))), [availableUsers]);
   const categoryOptions = availableTeams.filter(t => t !== 'External').map(c => ({ label: c, value: c }));
   const userOptions = activeUsers.map(u => ({ label: `${u.firstName} ${u.lastName}`, value: u.id, subLabel: u.jobTitle }));
   const titleOptions = Array.from(new Set(availableUsers.map(u => u.jobTitle))).map(t => ({ label: t, value: t }));
+  const reviewFrequencyOptions = REVIEW_FREQUENCY_PRESETS.map(p => ({ label: p.label, value: String(p.days) }));
 
   useEffect(() => { setLocal(process); setDelegationTarget(null); }, [process.id, process.lastReviewedAt]);
 
@@ -293,6 +301,65 @@ const RectoEditor: React.FC<RectoEditorProps> = ({
                     </button>
                 )}
 
+                {/* Process Freshness System - Only for PUBLISHED processes */}
+                {local.status === 'PUBLISHED' && (
+                    <div className={`p-4 rounded-xl border-2 space-y-3 ${
+                        freshnessStatus === 'EXPIRED' 
+                            ? 'bg-red-50 border-red-200' 
+                            : freshnessStatus === 'DUE_SOON' 
+                            ? 'bg-amber-50 border-amber-200' 
+                            : 'bg-emerald-50 border-emerald-100'
+                    }`}>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                {freshnessStatus === 'EXPIRED' ? (
+                                    <AlertTriangle size={16} className="text-red-500" />
+                                ) : freshnessStatus === 'DUE_SOON' ? (
+                                    <Clock size={16} className="text-amber-500" />
+                                ) : (
+                                    <CheckCircle2 size={16} className="text-emerald-500" />
+                                )}
+                                <span className={`text-[10px] font-black uppercase tracking-widest ${
+                                    freshnessStatus === 'EXPIRED' 
+                                        ? 'text-red-600' 
+                                        : freshnessStatus === 'DUE_SOON' 
+                                        ? 'text-amber-600' 
+                                        : 'text-emerald-600'
+                                }`}>
+                                    {freshnessStatus === 'EXPIRED' ? 'EXPIRED' : freshnessStatus === 'DUE_SOON' ? 'REVIEW DUE SOON' : 'CURRENT'}
+                                </span>
+                            </div>
+                        </div>
+                        <div className={`text-[10px] ${
+                            freshnessStatus === 'EXPIRED' ? 'text-red-600' : freshnessStatus === 'DUE_SOON' ? 'text-amber-600' : 'text-emerald-600'
+                        }`}>
+                            {freshnessStatus === 'EXPIRED' 
+                                ? `Expired ${Math.abs(daysUntilExpiration)} days ago`
+                                : freshnessStatus === 'DUE_SOON'
+                                ? `${daysUntilExpiration} days until expiration`
+                                : `Valid until ${expirationDate.toLocaleDateString()}`
+                            }
+                        </div>
+                        {(freshnessStatus === 'EXPIRED' || freshnessStatus === 'DUE_SOON') && userCanRefresh && onRefresh && (
+                            <button 
+                                onClick={() => onRefresh(local)}
+                                className={`w-full py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
+                                    freshnessStatus === 'EXPIRED'
+                                        ? 'bg-red-600 text-white hover:bg-red-700'
+                                        : 'bg-amber-500 text-white hover:bg-amber-600'
+                                }`}
+                            >
+                                <RefreshCw size={12} /> Refresh Process
+                            </button>
+                        )}
+                        {freshnessStatus === 'EXPIRED' && (
+                            <div className="text-[9px] text-red-500 font-medium text-center">
+                                ⚠️ New runs are blocked until this process is refreshed
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 <div className="space-y-6">
                     <div className="space-y-3">
                     <span className="block font-bold text-slate-400 uppercase tracking-widest text-[10px]">Access Control</span>
@@ -316,6 +383,32 @@ const RectoEditor: React.FC<RectoEditorProps> = ({
                         <div className="flex items-center gap-2"><Lock size={14} /><span className="text-[9px] font-black uppercase tracking-widest">Enforce Step Order</span></div>
                         <div className={`w-8 h-4 rounded-full relative transition-colors ${local.sequential_execution ? 'bg-[#4F46E5]' : 'bg-slate-300'}`}><div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-transform ${local.sequential_execution ? 'translate-x-4' : 'translate-x-0.5'}`} /></div>
                         </button>
+                    </div>
+
+                    {/* Review Frequency Selector */}
+                    <div className="space-y-3">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-2">
+                            REVIEW CYCLE
+                            <div className="group relative">
+                                <InfoIcon size={10} className="text-slate-300 cursor-help" />
+                                <div className="absolute right-0 bottom-full mb-2 w-52 bg-slate-900 text-white text-[10px] p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 leading-relaxed">
+                                    Processes expire after this period and must be refreshed. Expired processes block new runs.
+                                </div>
+                            </div>
+                        </span>
+                        <CustomSelect 
+                            value={String(local.review_frequency_days)} 
+                            onChange={(val) => handleChange({ review_frequency_days: parseInt(val) })} 
+                            options={reviewFrequencyOptions} 
+                            disabled={effectiveReadOnly} 
+                            className="text-sm" 
+                        />
+                        {local.status === 'PUBLISHED' && (
+                            <div className="text-[9px] text-slate-400 flex items-center gap-1.5">
+                                <Calendar size={10} />
+                                Next review: {expirationDate.toLocaleDateString()}
+                            </div>
+                        )}
                     </div>
                 </div>
 

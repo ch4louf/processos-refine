@@ -3,8 +3,25 @@ import { ProcessDefinition, User, WorkspaceSettings, Team } from '../types';
 
 /**
  * Freshness types for process reviews
+ * - CURRENT: Process is within review period
+ * - DUE_SOON: Within 30 days of expiration (notifications start)
+ * - EXPIRED: Past due date (hard block for new runs)
  */
-export type FreshnessStatus = 'UP_TO_DATE' | 'DUE_SOON' | 'OUTDATED';
+export type FreshnessStatus = 'CURRENT' | 'DUE_SOON' | 'EXPIRED';
+
+/**
+ * Review frequency presets in months
+ */
+export const REVIEW_FREQUENCY_PRESETS = [
+  { label: '3 months', value: 90, days: 90 },
+  { label: '6 months', value: 180, days: 180 },
+  { label: '9 months', value: 270, days: 270 },
+  { label: '12 months', value: 365, days: 365 },
+] as const;
+
+export const DEFAULT_REVIEW_FREQUENCY_DAYS = 180; // 6 months
+export const DUE_SOON_LEAD_DAYS = 30; // Notifications start 30 days before expiration
+export const ESCALATION_DAYS = 7; // Team Lead notified after 7 days in DUE_SOON without action
 
 /**
  * SaaS Resolution Waterfall (B1, B2, B3, B4, B5):
@@ -179,19 +196,72 @@ export const getProcessGovernance = (process: ProcessDefinition, allUsers: User[
 
 /**
  * SaaS Logic: Calculates if a process version is due for audit review.
+ * Returns:
+ * - CURRENT: Within review period
+ * - DUE_SOON: Within 30 days of expiration date
+ * - EXPIRED: Past the expiration date (hard block for new runs)
  */
 export const calculateStatus = (process: ProcessDefinition): FreshnessStatus => {
-  if (process.status !== 'PUBLISHED') return 'UP_TO_DATE'; 
+  // Only published processes have freshness tracking
+  if (process.status !== 'PUBLISHED') return 'CURRENT'; 
 
-  const lastDate = new Date(process.lastReviewedAt);
-  const nextReviewDate = new Date(lastDate);
-  nextReviewDate.setDate(nextReviewDate.getDate() + process.review_frequency_days);
+  const lastReviewDate = new Date(process.lastReviewedAt);
+  const expirationDate = new Date(lastReviewDate);
+  expirationDate.setDate(expirationDate.getDate() + process.review_frequency_days);
   
-  const now = new Date('2025-03-15T10:00:00Z');
-  const diffTime = nextReviewDate.getTime() - now.getTime();
+  const now = new Date();
+  const diffTime = expirationDate.getTime() - now.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  if (diffDays < 0) return 'OUTDATED';
-  if (diffDays <= process.review_due_lead_days) return 'DUE_SOON';
-  return 'UP_TO_DATE';
+  // EXPIRED: Past the expiration date (immediate hard block)
+  if (diffDays < 0) return 'EXPIRED';
+  
+  // DUE_SOON: Within lead days of expiration (notifications start)
+  if (diffDays <= DUE_SOON_LEAD_DAYS) return 'DUE_SOON';
+  
+  // CURRENT: Normal operation
+  return 'CURRENT';
+};
+
+/**
+ * Get the expiration date for a process
+ */
+export const getExpirationDate = (process: ProcessDefinition): Date => {
+  const lastReviewDate = new Date(process.lastReviewedAt);
+  const expirationDate = new Date(lastReviewDate);
+  expirationDate.setDate(expirationDate.getDate() + process.review_frequency_days);
+  return expirationDate;
+};
+
+/**
+ * Get days until expiration (negative if expired)
+ */
+export const getDaysUntilExpiration = (process: ProcessDefinition): number => {
+  const expirationDate = getExpirationDate(process);
+  const now = new Date();
+  const diffTime = expirationDate.getTime() - now.getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+};
+
+/**
+ * Check if a user can refresh a process
+ * Editors designated for the process OR Team Lead can refresh
+ */
+export const canRefreshProcess = (
+  user: User,
+  process: ProcessDefinition,
+  workspace: WorkspaceSettings,
+  teams: Team[]
+): boolean => {
+  // Global Admin can always refresh
+  if (isGlobalAdmin(user)) return true;
+  
+  // Designated Editor can refresh
+  if (hasGovernancePermission(user, process, 'EDITOR', workspace, teams)) return true;
+  
+  // Team Lead of owning team can refresh (override)
+  const owningTeam = teams.find(t => t.name === process.category);
+  if (owningTeam && owningTeam.leadUserId === user.id) return true;
+  
+  return false;
 };

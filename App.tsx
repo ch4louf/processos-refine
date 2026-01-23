@@ -398,7 +398,7 @@ function InnerApp() {
       activeTab={activeTab} 
       onNavigate={handleNavigate} 
       libraryContext={libraryContext} 
-      reviewRequiredCount={processes.filter(p => p.status === 'PUBLISHED' && (calculateStatus(p) === 'OUTDATED' || calculateStatus(p) === 'DUE_SOON')).length} 
+      reviewRequiredCount={processes.filter(p => p.status === 'PUBLISHED' && (calculateStatus(p) === 'EXPIRED' || calculateStatus(p) === 'DUE_SOON')).length} 
       myTasksCount={tasks.filter(t => t.status === 'OPEN' && resolveEffectiveUser(t.assigneeUserId, t.assigneeJobTitle, t.assigneeTeamId, users, teams).id === currentUser.id).length}
       onNotificationClick={handleNotificationAction}
     >

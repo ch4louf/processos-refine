@@ -40,8 +40,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onAction, onNavigate }) => {
     return false;
   }), [processes, user, users, workspace, teams]);
 
-  // Outdated Processes (Governance)
-  const outdatedProcesses = useMemo(() => visibleProcesses.filter(p => p.status === 'PUBLISHED' && calculateStatus(p) === 'OUTDATED'), [visibleProcesses]);
+  // Expired Processes (Governance - hard blocked for new runs)
+  const outdatedProcesses = useMemo(() => visibleProcesses.filter(p => p.status === 'PUBLISHED' && calculateStatus(p) === 'EXPIRED'), [visibleProcesses]);
   
   // My Open Tasks
   const myOpenTasks = useMemo(() => tasks.filter(t => {
