@@ -24,14 +24,26 @@ interface TeamManagementProps {
   onClearFilters: () => void;
 }
 
-// FIXED: Always square, uniform size (28px) for perfect alignment
-const PermissionBadge: React.FC<{ icon: any, label: string, colorClass?: string }> = ({ icon: Icon, label, colorClass = "indigo" }) => {
+// FIXED: Always square, uniform size (28px) for perfect alignment - or expanded with label
+const PermissionBadge: React.FC<{ icon: any, label: string, colorClass?: string, showLabel?: boolean }> = ({ icon: Icon, label, colorClass = "indigo", showLabel = false }) => {
     const styles = {
         indigo: "bg-indigo-50 text-indigo-600 border-indigo-200 hover:bg-indigo-100",
         emerald: "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100",
         amber: "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100",
         slate: "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100",
     }[colorClass as "indigo" | "emerald" | "amber" | "slate"];
+
+    if (showLabel) {
+        return (
+            <div 
+                className={`flex items-center gap-1.5 rounded-lg border shadow-sm transition-all cursor-help h-7 px-2 shrink-0 ${styles}`} 
+                title={label}
+            >
+                <Icon size={14} strokeWidth={2.5} />
+                <span className="text-[10px] font-bold">{label}</span>
+            </div>
+        );
+    }
 
     return (
         <div 
@@ -554,10 +566,10 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
                                     ) : user.jobTitle}
                                 </div>
                                 <div className="col-span-2 flex flex-wrap justify-start gap-1.5">
-                                    {isAdmin ? <PermissionBadge icon={Crown} label="Admin" colorClass="amber" /> : isAuditor ? <PermissionBadge icon={Eye} label="Auditor" colorClass="slate" /> : (
+                                    {isAdmin ? <PermissionBadge icon={Crown} label="Admin" colorClass="amber" showLabel /> : isAuditor ? <PermissionBadge icon={Eye} label="Auditor" colorClass="slate" showLabel /> : (
                                         <>
                                           {activePerms.map((perm, idx) => (
-                                            <PermissionBadge key={idx} icon={perm.icon} label={perm.label} colorClass={perm.color} />
+                                            <PermissionBadge key={idx} icon={perm.icon} label={perm.label} colorClass={perm.color} showLabel={activePerms.length === 1} />
                                           ))}
                                           {activePerms.length === 0 && <div className="text-[9px] font-black uppercase text-slate-300 tracking-widest flex items-center gap-1"><Lock size={12} /> Read-only</div>}
                                         </>
