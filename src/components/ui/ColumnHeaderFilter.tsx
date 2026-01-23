@@ -70,35 +70,35 @@ const ColumnHeaderFilter: React.FC<ColumnHeaderFilterProps> = ({
         </span>
         
         <div className="flex items-center gap-0.5">
-          {/* Sort indicator - always clickable */}
+          {/* Sort indicator - always visible */}
           <button
             onClick={handleSort}
             className={`p-0.5 rounded transition-all ${
               isSorted 
                 ? 'text-indigo-600' 
-                : 'text-slate-300 opacity-0 group-hover:opacity-100 hover:text-indigo-500'
+                : 'text-slate-400 hover:text-indigo-500'
             }`}
             title={`Sort by ${label}`}
           >
             {isSorted ? (
               currentSort.direction === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />
             ) : (
-              <ArrowUp size={11} />
+              <ArrowDown size={11} className="opacity-50" />
             )}
           </button>
           
-          {/* Filter indicator - only show if filter options exist */}
+          {/* Filter indicator - always visible if filter options exist */}
           {hasFilters && (
             <button
               onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
               className={`p-0.5 rounded transition-all ${
                 isFiltered 
                   ? 'text-indigo-600 bg-indigo-100' 
-                  : 'text-slate-300 opacity-0 group-hover:opacity-100 hover:text-indigo-500'
+                  : 'text-slate-400 hover:text-indigo-500'
               }`}
               title={`Filter by ${label}`}
             >
-              <Filter size={10} />
+              <Filter size={10} className={isFiltered ? '' : 'opacity-50'} />
             </button>
           )}
         </div>
