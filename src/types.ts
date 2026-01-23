@@ -99,6 +99,10 @@ export interface WorkspaceSettings {
   workspace_id: string;
   default_review_frequency_days: number;
   default_review_due_lead_days: number;
+  settings?: {
+    blockRunsOnExpired?: boolean;
+    blockNewRunsOnExpired?: boolean;
+  };
 }
 
 export interface ActivityLog {

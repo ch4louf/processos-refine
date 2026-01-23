@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Layers, Activity, Settings2, ClipboardList, Bell, X, Shield, ReceiptText, Eye, AlertCircle, BookOpen, Users, Briefcase } from 'lucide-react';
+import { Layers, Activity, Settings2, ClipboardList, Bell, X, Shield, ReceiptText, Eye, AlertCircle, BookOpen, Users, Briefcase, Settings } from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
 import { useUI } from '../contexts/UIContext';
 import { Notification } from '../types';
@@ -38,6 +38,7 @@ const Layout: React.FC<LayoutProps> = ({
   const canAccessDesign = perms.canDesign || perms.canVerifyDesign;
   const canAccessOps = perms.canExecute || perms.canVerifyRun;
   const canAccessBilling = perms.canAccessBilling;
+  const canAccessWorkspace = perms.canAccessWorkspace;
   const isAuditor = !Object.values(perms).some(Boolean);
 
   useEffect(() => {
@@ -113,10 +114,15 @@ const Layout: React.FC<LayoutProps> = ({
           )}
 
           {/* WORKSPACE */}
-          {(canAccessBilling || canManageTeam) && (
+          {(canAccessBilling || canManageTeam || canAccessWorkspace) && (
             <div>
               <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4 px-2">Workspace</div>
               <div className="space-y-1">
+                {canAccessWorkspace && (
+                    <button onClick={() => onNavigate('WORKSPACE_SETTINGS')} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'WORKSPACE_SETTINGS' ? 'bg-[#4F46E5] text-white' : 'hover:bg-slate-800/50 hover:text-white'}`}>
+                      <Settings size={18} /> Settings
+                    </button>
+                )}
                 {canAccessBilling && (
                     <button onClick={() => onNavigate('BILLING')} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'BILLING' ? 'bg-[#4F46E5] text-white' : 'hover:bg-slate-800/50 hover:text-white'}`}>
                       <ReceiptText size={18} /> Billing & Plan

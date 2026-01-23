@@ -24,6 +24,7 @@ import Dashboard from './components/Dashboard';
 import TeamManagement from './components/TeamManagement';
 import Layout from './components/Layout';
 import ActiveRuns from './components/ActiveRuns';
+import WorkspaceSettings from './components/WorkspaceSettings';
 
 // Context Imports
 import { UserProvider, useUser } from './contexts/UserContext';
@@ -31,7 +32,7 @@ import { DataProvider, useData } from './contexts/DataContext';
 import { UIProvider, useUI } from './contexts/UIContext';
 
 type ViewState = 'DASHBOARD' | 'RECTO_EDITOR' | 'VERSO_EXECUTION';
-type TabState = 'MY_TASKS' | 'DASHBOARD' | 'LIBRARY' | 'PROCESS_RUNS' | 'COMPLETED_RUNS' | 'TEAM' | 'REVIEWS' | 'BILLING';
+type TabState = 'MY_TASKS' | 'DASHBOARD' | 'LIBRARY' | 'PROCESS_RUNS' | 'COMPLETED_RUNS' | 'TEAM' | 'REVIEWS' | 'BILLING' | 'WORKSPACE_SETTINGS';
 type LibraryContext = 'DESIGN' | 'RUN';
 
 const ColumnHeader = ({ 
@@ -444,6 +445,17 @@ function InnerApp() {
                     <Shield size={64} className="mb-6 opacity-20" />
                     <h2 className="text-xl font-bold text-slate-700">Access Restricted</h2>
                     <p className="text-sm mt-2">You do not have permission to view Team Management settings.</p>
+                </div>
+            )
+        ) :
+        activeTab === 'WORKSPACE_SETTINGS' ? (
+            currentUser.permissions.canAccessWorkspace ? (
+                <WorkspaceSettings />
+            ) : (
+                <div className="flex flex-col items-center justify-center h-full text-slate-400 p-20 animate-in fade-in">
+                    <Shield size={64} className="mb-6 opacity-20" />
+                    <h2 className="text-xl font-bold text-slate-700">Access Restricted</h2>
+                    <p className="text-sm mt-2">Only Workspace Administrators can access these settings.</p>
                 </div>
             )
         ) :

@@ -16,6 +16,7 @@ interface UserContextType {
   updateTeam: (team: Team, oldName?: string) => void;
   deleteTeam: (id: string) => void;
   getUserColor: (teamName: string) => string;
+  updateWorkspace: (settings: WorkspaceSettings) => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -26,6 +27,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const [users, setUsers] = useState<User[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [workspace, setWorkspace] = useState<WorkspaceSettings>(MOCK_WORKSPACE);
   
   // Initialize current user ID from first user in repo (Mock Alice)
   const [currentUserId, setCurrentUserId] = useState<string>('');
@@ -120,19 +122,25 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return map[color] || map.slate;
   };
 
+  const updateWorkspace = (newSettings: WorkspaceSettings) => {
+    setWorkspace(newSettings);
+    // In a real app, this would persist to backend
+  };
+
   return (
     <UserContext.Provider value={{ 
       users, 
       teams,
       currentUser, 
-      workspace: MOCK_WORKSPACE, 
+      workspace, 
       updateUsers, 
       inviteUser,
       setCurrentUserId,
       addTeam,
       updateTeam,
       deleteTeam,
-      getUserColor
+      getUserColor,
+      updateWorkspace
     }}>
       {children}
     </UserContext.Provider>
