@@ -194,10 +194,13 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
   const uniqueJobTitles = useMemo(() => [...new Set(initialUsers.map(u => u.jobTitle).filter(Boolean))].sort(), [initialUsers]);
   const statusOptions = ['ACTIVE', 'INACTIVE'];
 
-  // Local column filters
+  // Local column filters - Status defaults to ACTIVE to hide inactive users
   const [filterTeam, setFilterTeam] = useState<string | null>(null);
   const [filterJobTitle, setFilterJobTitle] = useState<string | null>(null);
   const [filterIdentity, setFilterIdentity] = useState<string | null>(null);
+  
+  // Override filterStatus to default to ACTIVE if not set
+  const effectiveFilterStatus = filterStatus === null ? 'ACTIVE' : filterStatus;
   const [filterPermission, setFilterPermission] = useState<string | null>(null);
 
   const identityOptions = useMemo(
@@ -224,8 +227,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
     if (searchTerm && !`${u.firstName} ${u.lastName} ${u.team} ${u.email} ${u.jobTitle}`.toLowerCase().includes(searchTerm.toLowerCase())) {
       return false;
     }
-    // Status filter
-    if (filterStatus && filterStatus !== 'ALL' && u.status !== filterStatus) return false;
+    // Status filter (defaults to ACTIVE)
+    if (effectiveFilterStatus && effectiveFilterStatus !== 'ALL' && u.status !== effectiveFilterStatus) return false;
     // Team filter
     if (filterTeam && u.team !== filterTeam) return false;
     // Job Title filter
@@ -669,7 +672,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
                             { label: 'Active', value: 'ACTIVE' },
                             { label: `Inactive (${inactiveCount})`, value: 'INACTIVE' }
                           ]}
-                          filterValue={filterStatus}
+                          filterValue={effectiveFilterStatus}
                           onFilter={setFilterStatus}
                           className="col-span-2"
                           align="center"
