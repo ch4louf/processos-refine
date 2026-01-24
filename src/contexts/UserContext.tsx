@@ -35,9 +35,17 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Initial load with permission migration
     let allUsers = userRepo.getAll();
-    
-    // Migrate: ensure all users have canAccessWorkspace field
     let needsMigration = false;
+    
+    // Merge missing users from MOCK_USERS (e.g., newly added inactive users)
+    const existingIds = new Set(allUsers.map(u => u.id));
+    const missingUsers = MOCK_USERS.filter(mu => !existingIds.has(mu.id));
+    if (missingUsers.length > 0) {
+      allUsers = [...allUsers, ...missingUsers];
+      needsMigration = true;
+    }
+    
+    // Migrate: ensure all users have canAccessWorkspace field and proper permission names
     allUsers = allUsers.map(u => {
       if (u.permissions) {
         let needsUpdate = false;

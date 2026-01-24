@@ -595,53 +595,53 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
       <div className="p-10 max-w-7xl mx-auto w-full h-full flex flex-col animate-in fade-in duration-500">
         
         {/* HEADER & CONTROLS */}
-        <div className="flex items-center justify-between mb-8 relative z-30 h-16 shrink-0">
-            <div className="flex-1 min-w-0 pr-4">
-                <h1 className="text-3xl font-light text-slate-900 flex items-center gap-3 truncate"><Users className="text-indigo-500 shrink-0" /> Team Management</h1>
-                <p className="text-slate-500 mt-1 text-sm truncate">Manage permissions and responsibility matrix.</p>
-            </div>
-            
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-40">
-                <div className="bg-slate-100 p-1 rounded-xl flex items-center">
-                    <button 
-                        onClick={() => setActiveTab('MEMBERS')}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'MEMBERS' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                        <Users size={14} /> Members
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('TEAMS')}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'TEAMS' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                        <LayoutGrid size={14} /> Teams
-                    </button>
+        <div className="mb-8 shrink-0">
+            {/* Top row: Title + Tabs + Actions */}
+            <div className="flex items-start justify-between gap-6">
+                {/* Left: Title */}
+                <div className="shrink-0">
+                    <h1 className="text-3xl font-light text-slate-900 flex items-center gap-3"><Users className="text-indigo-500 shrink-0" /> Team Management</h1>
+                    <p className="text-slate-500 mt-1 text-sm">Manage permissions and responsibility matrix.</p>
                 </div>
-            </div>
-
-            <div className="flex-1 flex justify-end items-center gap-2 pl-4">
-                {activeTab === 'MEMBERS' && (
-                    <div className="relative w-48 mr-2">
-                        <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
-                        <input className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-xs w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm" placeholder="Find member..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                    </div>
-                )}
                 
-                {canManage && (
-                    <>
-                        <button onClick={handleOpenAuditModal} className="flex items-center gap-2 px-3 py-2 text-slate-500 bg-white border border-slate-200 hover:border-indigo-200 hover:text-indigo-600 rounded-lg text-xs font-bold transition-all shadow-sm" title="Export Security & Audit Report">
-                            <FileText size={16} /> <span className="hidden xl:inline">Export Audit</span>
+                {/* Center: Tabs */}
+                <div className="flex-1 flex justify-center">
+                    <div className="bg-slate-100 p-1 rounded-xl flex items-center">
+                        <button 
+                            onClick={() => setActiveTab('MEMBERS')}
+                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'MEMBERS' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            <Users size={14} /> Members
                         </button>
-                        <div className="w-px h-6 bg-slate-200 mx-1"></div>
-                    </>
-                )}
-
-                {activeFilterCount > 0 && <button onClick={clearAllFilters} className="flex items-center gap-2 px-3 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg text-xs font-bold transition-colors"><RotateCcw size={14} /> Reset</button>}
+                        <button 
+                            onClick={() => setActiveTab('TEAMS')}
+                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'TEAMS' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            <LayoutGrid size={14} /> Teams
+                        </button>
+                    </div>
+                </div>
                 
-                {canManage && (
-                    <button onClick={() => activeTab === 'MEMBERS' ? setIsInviteModalOpen(true) : (setNewTeam({ name: '', description: '', color: 'indigo' }), setIsTeamModalOpen(true))} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 font-medium transition-colors shrink-0 animate-in fade-in">
-                        <Plus size={18} /> {activeTab === 'MEMBERS' ? 'Invite' : 'Add Team'}
-                    </button>
-                )}
+                {/* Right: Actions */}
+                <div className="flex items-center gap-2 shrink-0">
+                    {activeTab === 'MEMBERS' && (
+                        <div className="relative w-48">
+                            <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
+                            <input className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-xs w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm" placeholder="Find member..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                        </div>
+                    )}
+                    
+                    {canManage && (
+                        <>
+                            <button onClick={handleOpenAuditModal} className="flex items-center gap-2 px-4 py-2.5 text-slate-600 bg-white border border-slate-200 hover:border-indigo-300 hover:text-indigo-600 rounded-lg text-xs font-semibold transition-all shadow-sm">
+                                <FileText size={16} /> Export Audit
+                            </button>
+                            <button onClick={() => activeTab === 'MEMBERS' ? setIsInviteModalOpen(true) : (setNewTeam({ name: '', description: '', color: 'indigo' }), setIsTeamModalOpen(true))} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 text-xs font-semibold transition-colors">
+                                <Plus size={16} /> {activeTab === 'MEMBERS' ? 'Invite' : 'Add Team'}
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
         </div>
 
