@@ -197,6 +197,26 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
   // Local column filters
   const [filterTeam, setFilterTeam] = useState<string | null>(null);
   const [filterJobTitle, setFilterJobTitle] = useState<string | null>(null);
+  const [filterIdentity, setFilterIdentity] = useState<string | null>(null);
+  const [filterPermission, setFilterPermission] = useState<string | null>(null);
+
+  const identityOptions = useMemo(
+    () => initialUsers
+      .map(u => ({ label: `${u.firstName} ${u.lastName}`, value: u.id }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+    [initialUsers]
+  );
+
+  const permissionOptions = useMemo(() => ([
+    { label: 'Admin', value: 'ADMIN' },
+    { label: 'Auditor (read-only)', value: 'AUDITOR' },
+    { label: 'Designer', value: 'canDesignProcess' },
+    { label: 'Publisher', value: 'canPublishProcess' },
+    { label: 'Executor', value: 'canExecuteRun' },
+    { label: 'Validator', value: 'canValidateRun' },
+    { label: 'Team Manager', value: 'canManageTeam' },
+    { label: 'Billing', value: 'canAccessBilling' }
+  ]), []);
 
   // Filter users based on all column filters
   let filteredUsers = initialUsers.filter(u => {
@@ -210,6 +230,21 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
     if (filterTeam && u.team !== filterTeam) return false;
     // Job Title filter
     if (filterJobTitle && u.jobTitle !== filterJobTitle) return false;
+
+    // Identity filter
+    if (filterIdentity && u.id !== filterIdentity) return false;
+
+    // Permission filter
+    if (filterPermission) {
+      const p = u.permissions;
+      const isAdmin = !!(p.canManageTeam && p.canAccessBilling);
+      const isAuditor = !Object.values(p).some(Boolean);
+      if (filterPermission === 'ADMIN' && !isAdmin) return false;
+      if (filterPermission === 'AUDITOR' && !isAuditor) return false;
+      if (filterPermission !== 'ADMIN' && filterPermission !== 'AUDITOR') {
+        if (!(p as any)[filterPermission]) return false;
+      }
+    }
     return true;
   });
   
@@ -217,10 +252,20 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
   filteredUsers.sort((a, b) => {
     let vA = '', vB = '';
     switch (sortConfig.key) { 
-      case 'lastName': vA = a.lastName.toLowerCase(); vB = b.lastName.toLowerCase(); break; 
+      case 'lastName': {
+        vA = `${a.lastName} ${a.firstName}`.toLowerCase();
+        vB = `${b.lastName} ${b.firstName}`.toLowerCase();
+        break;
+      }
       case 'team': vA = a.team.toLowerCase(); vB = b.team.toLowerCase(); break; 
       case 'status': vA = a.status; vB = b.status; break; 
       case 'jobTitle': vA = (a.jobTitle || '').toLowerCase(); vB = (b.jobTitle || '').toLowerCase(); break;
+      case 'permissions': {
+        const score = (u: User) => Object.values(u.permissions || {}).filter(Boolean).length;
+        vA = String(score(a));
+        vB = String(score(b));
+        break;
+      }
       default: vA = a.lastName.toLowerCase(); vB = b.lastName.toLowerCase(); 
     }
     if (vA < vB) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -228,7 +273,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
   });
 
   const inactiveCount = initialUsers.filter(u => u.status === 'INACTIVE').length;
-  const activeFilterCount = (searchTerm ? 1 : 0) + (filterStatus ? 1 : 0) + (filterTeam ? 1 : 0) + (filterJobTitle ? 1 : 0);
+  const activeFilterCount = (searchTerm ? 1 : 0) + (filterStatus ? 1 : 0) + (filterTeam ? 1 : 0) + (filterJobTitle ? 1 : 0) + (filterIdentity ? 1 : 0) + (filterPermission ? 1 : 0);
 
   // Clear all filters helper
   const clearAllFilters = () => {
@@ -236,6 +281,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
     setFilterStatus(null);
     setFilterTeam(null);
     setFilterJobTitle(null);
+    setFilterIdentity(null);
+    setFilterPermission(null);
   };
 
   // --- HANDLERS ---
@@ -608,6 +655,9 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
                           sortKey="lastName" 
                           currentSort={sortConfig} 
                           onSort={onSort} 
+                          filterOptions={identityOptions}
+                          filterValue={filterIdentity}
+                          onFilter={setFilterIdentity}
                           className="col-span-3"
                         />
                         <ColumnHeaderFilter 
@@ -644,7 +694,17 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ searchTerm, setSearchTe
                           onFilter={setFilterJobTitle}
                           className="col-span-2"
                         />
-                        <div className="col-span-2">Permissions</div>
+                        <ColumnHeaderFilter
+                          label="Permissions"
+                          sortKey="permissions"
+                          currentSort={sortConfig}
+                          onSort={onSort}
+                          filterOptions={permissionOptions}
+                          filterValue={filterPermission}
+                          onFilter={setFilterPermission}
+                          className="col-span-2"
+                          align="center"
+                        />
                         <div className="col-span-1 text-right">Action</div>
                     </div>
                     

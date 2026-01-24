@@ -77,6 +77,11 @@ function InnerApp() {
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [activeFilterMenu, setActiveFilterMenu] = useState<{ key: string, x: number, y: number } | null>(null);
 
+  // Team Management-specific UI state (independent from Library search/sort)
+  const [teamMgmtSearch, setTeamMgmtSearch] = useState('');
+  const [teamMgmtSort, setTeamMgmtSort] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: 'lastName', direction: 'asc' });
+  const [teamMgmtStatus, setTeamMgmtStatus] = useState<string | null>(null);
+
   const [selectedProcessId, setSelectedProcessId] = useState<string | null>(null);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [isEditorReadOnly, setIsEditorReadOnly] = useState(true);
@@ -327,6 +332,20 @@ function InnerApp() {
     });
   };
 
+  const handleTeamMgmtSort = (key: string) => {
+    setTeamMgmtSort(prev => {
+      if (prev.key === key) {
+        return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      return { key, direction: 'asc' };
+    });
+  };
+
+  const clearTeamMgmtFilters = () => {
+    setTeamMgmtSearch('');
+    setTeamMgmtStatus(null);
+  };
+
   // VISIBILITY FILTERING LOGIC - STRICT PRIVACY (Context-aware per Governance Matrix)
   const visibleProcesses = useMemo(() => {
     return processes.filter(p => {
@@ -439,7 +458,23 @@ function InnerApp() {
         activeTab === 'MY_TASKS' ? <TaskCenter onOpenRun={(id) => { const run = runs.find(i => i.id === id); if (run) openRun(run); }} /> :
         activeTab === 'TEAM' ? (
             currentUser.permissions.canManageTeam ? (
-                <TeamManagement searchTerm={searchTerm} setSearchTerm={setSearchTerm} filterRole={null} setFilterRole={() => {}} filterStatus={null} setFilterStatus={() => {}} isFilterOpen={false} setIsFilterOpen={() => {}} isSortOpen={false} setIsSortOpen={() => {}} sortConfig={{key: 'lastName', direction: 'asc'}} onSort={handleSort} activeHeaderMenu={null} onToggleHeaderMenu={() => {}} onClearFilters={() => setColumnFilters({})} />
+                <TeamManagement 
+                  searchTerm={teamMgmtSearch} 
+                  setSearchTerm={setTeamMgmtSearch} 
+                  filterRole={null} 
+                  setFilterRole={() => {}} 
+                  filterStatus={teamMgmtStatus} 
+                  setFilterStatus={setTeamMgmtStatus} 
+                  isFilterOpen={false} 
+                  setIsFilterOpen={() => {}} 
+                  isSortOpen={false} 
+                  setIsSortOpen={() => {}} 
+                  sortConfig={teamMgmtSort} 
+                  onSort={handleTeamMgmtSort} 
+                  activeHeaderMenu={null} 
+                  onToggleHeaderMenu={() => {}} 
+                  onClearFilters={clearTeamMgmtFilters} 
+                />
             ) : (
                 <div className="flex flex-col items-center justify-center h-full text-slate-400 p-20 animate-in fade-in">
                     <Shield size={64} className="mb-6 opacity-20" />
