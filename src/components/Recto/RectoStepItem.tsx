@@ -1,6 +1,7 @@
-import React, { useLayoutEffect, useState, useRef } from 'react';
+import React, { useLayoutEffect, useState, useRef, useMemo, useEffect } from 'react';
 import { Trash2, Bold, UserPlus, X, CheckCircle2, Search, Users, LayoutGrid, Type, Upload, Info as InfoIcon } from 'lucide-react';
 import { ProcessStep, StepType, User } from '../../types';
+import MentionInput, { MentionSuggestion, MentionInputHandle } from '../ui/MentionInput';
 
 interface RectoStepItemProps {
   step: ProcessStep;
@@ -45,26 +46,34 @@ export const RectoStepItem: React.FC<RectoStepItemProps> = React.memo(({
   // Stores the calculated cursor position from the click event
   const [clickCursorOffset, setClickCursorOffset] = useState<number | null>(null);
   const viewModeRef = useRef<HTMLDivElement>(null);
+  const mentionInputRef = useRef<MentionInputHandle>(null);
+
+  // Sync mentionInputRef with stepRefs for external access
+  useEffect(() => {
+    if (mentionInputRef.current) {
+      const handle = mentionInputRef.current;
+      // Create a proxy textarea-like object for stepRefs
+      stepRefs.current[step.id] = handle.getTextarea();
+    }
+  }, [step.id, stepRefs, isFocused]);
 
   useLayoutEffect(() => {
-    const textarea = stepRefs.current[step.id];
-    if (isFocused && textarea) {
+    if (isFocused && mentionInputRef.current) {
+      const textarea = mentionInputRef.current.getTextarea();
+      
       // 1. Auto-adjust height
-      adjustHeight(textarea);
+      if (textarea) adjustHeight(textarea);
 
       // 2. Restore cursor position if we have one from a click
       if (clickCursorOffset !== null) {
-        textarea.setSelectionRange(clickCursorOffset, clickCursorOffset);
-        setClickCursorOffset(null); // Reset after applying
+        mentionInputRef.current.setSelectionRange(clickCursorOffset, clickCursorOffset);
+        setClickCursorOffset(null);
       }
       
-      // 3. Force focus (in case preventDefault in mouseDown prevented default focus)
-      // Note: We don't force selection to 0 for new steps here anymore, handled by parent focus logic
-      if (document.activeElement !== textarea) {
-          textarea.focus();
-      }
+      // 3. Force focus
+      mentionInputRef.current.focus();
     }
-  }, [isFocused, step.text, step.id, adjustHeight, stepRefs, clickCursorOffset]);
+  }, [isFocused, step.text, step.id, adjustHeight, clickCursorOffset]);
 
   const handleViewClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (effectiveReadOnly) return;
@@ -161,6 +170,66 @@ export const RectoStepItem: React.FC<RectoStepItemProps> = React.memo(({
   const currentTeamIds = step.assignedTeamIds || [];
   const totalAssignees = currentJobTitles.length + currentUserIds.length + currentTeamIds.length;
 
+  // Build mention suggestions from users, teams, and job titles
+  const mentionSuggestions: MentionSuggestion[] = useMemo(() => {
+    const suggestions: MentionSuggestion[] = [];
+    
+    // Add job titles first (most common assignment type)
+    const jobTitlesSet = new Set<string>();
+    activeUsers.forEach(u => { if (u.jobTitle) jobTitlesSet.add(u.jobTitle); });
+    Array.from(jobTitlesSet).forEach(title => {
+      suggestions.push({
+        id: title,
+        label: title,
+        type: 'jobTitle',
+        subLabel: `${activeUsers.filter(u => u.jobTitle === title).length} people`
+      });
+    });
+    
+    // Add teams
+    availableTeams.forEach(team => {
+      suggestions.push({
+        id: team,
+        label: team,
+        type: 'team',
+        subLabel: `${activeUsers.filter(u => u.team === team).length} members`
+      });
+    });
+    
+    // Add individual users
+    activeUsers.forEach(user => {
+      suggestions.push({
+        id: user.id,
+        label: `${user.firstName} ${user.lastName}`,
+        type: 'user',
+        subLabel: `${user.jobTitle} · ${user.team}`
+      });
+    });
+    
+    return suggestions;
+  }, [activeUsers, availableTeams]);
+
+  // Handle mention selection - auto-assign to step
+  const handleMentionSelect = (mention: MentionSuggestion) => {
+    switch (mention.type) {
+      case 'user':
+        if (!currentUserIds.includes(mention.id)) {
+          onToggleAssignment('user', mention.id);
+        }
+        break;
+      case 'team':
+        if (!currentTeamIds.includes(mention.id)) {
+          onToggleAssignment('team', mention.id);
+        }
+        break;
+      case 'jobTitle':
+        if (!currentJobTitles.includes(mention.id)) {
+          onToggleAssignment('title', mention.id);
+        }
+        break;
+    }
+  };
+
   const typographyClasses = "w-full text-[16px] leading-relaxed py-0.5 min-h-[1.5em] whitespace-pre-wrap break-words border-none outline-none bg-transparent";
 
   return (
@@ -173,20 +242,24 @@ export const RectoStepItem: React.FC<RectoStepItemProps> = React.memo(({
       <div className="flex-1 pr-2 min-w-0">
         {!effectiveReadOnly && isFocused ? (
           <div className="relative">
-            <textarea 
-              ref={el => { stepRefs.current[step.id] = el; }} 
-              value={step.text} 
+            <MentionInput
+              ref={mentionInputRef}
+              value={step.text}
+              onChange={(newText) => { 
+                onUpdate(step.id, { text: newText }); 
+              }}
+              onMentionSelect={handleMentionSelect}
+              suggestions={mentionSuggestions}
+              placeholder="Describe action... (type @ to mention)"
+              className={`${typographyClasses} ${step.style?.bold ? 'font-bold' : 'font-normal'} text-slate-800 overflow-hidden resize-none`}
+              onKeyDown={handleKeyDown}
               onFocus={() => onFocus(step.id)}
               onBlur={(e) => {
                 const related = e.relatedTarget as HTMLElement;
                 if (related?.closest('.smart-assign-palette') || related?.closest('.custom-select-dropdown')) return;
                 onBlur();
               }}
-              onChange={(e) => { onUpdate(step.id, { text: e.target.value }); adjustHeight(e.target); }} 
-              onKeyDown={handleKeyDown}
-              className={`${typographyClasses} ${step.style?.bold ? 'font-bold' : 'font-normal'} text-slate-800 overflow-hidden resize-none`} 
-              rows={1} 
-              autoFocus 
+              autoFocus
             />
             <div className="absolute left-0 -top-12 z-[100] flex items-center gap-1 bg-white border border-slate-200 shadow-xl rounded-lg p-1">
                 <button onMouseDown={(e) => e.preventDefault()} onClick={() => onUpdate(step.id, { style: { ...step.style, bold: !step.style?.bold } })} className={`p-1.5 rounded hover:bg-slate-100 ${step.style?.bold ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}><Bold size={14} /></button>
